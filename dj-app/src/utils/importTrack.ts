@@ -1,6 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import type { Track } from "@/types";
+import type { CuratedTrack } from "@/data/curatedPlaylist";
 
 const LIBRARY_DIR = `${FileSystem.documentDirectory}dj-app-tracks/`;
 
@@ -50,6 +51,44 @@ export async function pickAndImportTracks(): Promise<Track[]> {
     imported.push(buildTrack(id, destUri, asset.name));
   }
   return imported;
+}
+
+/**
+ * Links a locally-picked audio file to one curated suggestion, prefilling
+ * title/artist/genre/bpm from the suggestion instead of guessing from the
+ * filename. The user still supplies the actual audio - we only ship metadata.
+ */
+export async function importFileForCuratedTrack(curated: CuratedTrack): Promise<Track | null> {
+  const result = await DocumentPicker.getDocumentAsync({
+    type: "audio/*",
+    multiple: false,
+    copyToCacheDirectory: true,
+  });
+  if (result.canceled || result.assets.length === 0) return null;
+
+  await ensureLibraryDir();
+  const asset = result.assets[0];
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  const ext = asset.name.includes(".") ? asset.name.split(".").pop() : "audio";
+  const destUri = `${LIBRARY_DIR}${id}.${ext}`;
+
+  let finalUri = asset.uri;
+  try {
+    await FileSystem.copyAsync({ from: asset.uri, to: destUri });
+    finalUri = destUri;
+  } catch (err) {
+    // Fall back to the picker's own URI if copy fails (e.g. some cloud providers).
+  }
+
+  return {
+    id,
+    title: curated.title,
+    artist: curated.artist,
+    uri: finalUri,
+    bpm: curated.approxBpm,
+    genre: curated.genre,
+    addedAt: Date.now(),
+  };
 }
 
 function buildTrack(id: string, uri: string, filename: string): Track {

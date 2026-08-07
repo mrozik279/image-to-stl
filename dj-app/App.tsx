@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import { Pressable, SafeAreaView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { LibraryScreen } from "@/screens/LibraryScreen";
 import { MixerScreen } from "@/screens/MixerScreen";
+import { SuggestionsScreen } from "@/screens/SuggestionsScreen";
 import { colors } from "@/theme";
 
-type Tab = "mixer" | "library";
+type Tab = "mixer" | "library" | "suggestions";
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("library");
@@ -16,11 +17,16 @@ export default function App() {
         <Text style={styles.appTitle}>DJ Mixer</Text>
       </View>
 
-      <View style={styles.content}>{tab === "mixer" ? <MixerScreen /> : <LibraryScreen />}</View>
+      <View style={styles.content}>
+        {tab === "mixer" ? <MixerScreen /> : tab === "suggestions" ? <SuggestionsScreen /> : <LibraryScreen />}
+      </View>
 
       <View style={styles.tabBar}>
         <Pressable style={styles.tabButton} onPress={() => setTab("library")}>
           <Text style={[styles.tabText, tab === "library" && styles.tabTextActive]}>Biblioteka</Text>
+        </Pressable>
+        <Pressable style={styles.tabButton} onPress={() => setTab("suggestions")}>
+          <Text style={[styles.tabText, tab === "suggestions" && styles.tabTextActive]}>Sugestie</Text>
         </Pressable>
         <Pressable style={styles.tabButton} onPress={() => setTab("mixer")}>
           <Text style={[styles.tabText, tab === "mixer" && styles.tabTextActive]}>Mikser</Text>
