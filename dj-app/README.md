@@ -48,6 +48,9 @@ npm start        # otwiera Metro bundler + QR kod dla Expo Go
 # albo:
 npm run android
 npm run ios
+npm run web       # podgląd w przeglądarce (przydatne bez telefonu pod ręką;
+                   # import plików i realne audio na web mają ograniczone
+                   # wsparcie — docelowa platforma to iOS/Android przez Expo Go)
 ```
 
 Sprawdzenie typów:

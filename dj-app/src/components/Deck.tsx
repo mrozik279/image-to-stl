@@ -181,12 +181,11 @@ export function Deck({ deckId }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
-    margin: 6,
+    marginBottom: 12,
   },
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
   deckLabel: { fontWeight: "800", fontSize: 13, letterSpacing: 1 },
