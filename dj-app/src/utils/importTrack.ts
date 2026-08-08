@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import type { Track } from "@/types";
@@ -12,6 +13,18 @@ async function ensureLibraryDir() {
   }
 }
 
+/**
+ * expo-file-system has no web implementation at all - calling it there
+ * throws immediately. The web picker already hands back a `blob:` URL
+ * that's directly playable, so there's nothing to copy; we just use it
+ * as-is. It won't survive a page reload (blob URLs die with the tab), but
+ * that's an inherent browser limitation, not something worth a fake
+ * workaround for.
+ */
+function isWeb() {
+  return Platform.OS === "web";
+}
+
 function titleFromFilename(name: string): { title: string; artist: string } {
   const base = name.replace(/\.[^/.]+$/, "");
   const parts = base.split(" - ");
@@ -24,7 +37,9 @@ function titleFromFilename(name: string): { title: string; artist: string } {
 /**
  * Opens the system file picker for audio files and copies each selection into
  * the app's sandboxed documents dir (required for stable playback across app
- * restarts, since picker URIs from some providers are transient).
+ * restarts, since picker URIs from some providers are transient). On web
+ * there's no sandboxed filesystem to copy into, so the picker's own blob URL
+ * is used directly.
  */
 export async function pickAndImportTracks(): Promise<Track[]> {
   const result = await DocumentPicker.getDocumentAsync({
@@ -34,6 +49,14 @@ export async function pickAndImportTracks(): Promise<Track[]> {
   });
 
   if (result.canceled) return [];
+
+  if (isWeb()) {
+    return result.assets.map((asset) => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      return buildTrack(id, asset.uri, asset.name);
+    });
+  }
+
   await ensureLibraryDir();
 
   const imported: Track[] = [];
@@ -66,18 +89,20 @@ export async function importFileForCuratedTrack(curated: CuratedTrack): Promise<
   });
   if (result.canceled || result.assets.length === 0) return null;
 
-  await ensureLibraryDir();
   const asset = result.assets[0];
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  const ext = asset.name.includes(".") ? asset.name.split(".").pop() : "audio";
-  const destUri = `${LIBRARY_DIR}${id}.${ext}`;
-
   let finalUri = asset.uri;
-  try {
-    await FileSystem.copyAsync({ from: asset.uri, to: destUri });
-    finalUri = destUri;
-  } catch (err) {
-    // Fall back to the picker's own URI if copy fails (e.g. some cloud providers).
+
+  if (!isWeb()) {
+    await ensureLibraryDir();
+    const ext = asset.name.includes(".") ? asset.name.split(".").pop() : "audio";
+    const destUri = `${LIBRARY_DIR}${id}.${ext}`;
+    try {
+      await FileSystem.copyAsync({ from: asset.uri, to: destUri });
+      finalUri = destUri;
+    } catch (err) {
+      // Fall back to the picker's own URI if copy fails (e.g. some cloud providers).
+    }
   }
 
   return {
