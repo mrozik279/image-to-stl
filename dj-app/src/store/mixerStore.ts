@@ -1,12 +1,18 @@
 import { create } from "zustand";
 import { Audio } from "expo-av";
 import { DeckEngine } from "@/audio/DeckEngine";
+import { youtubeEngines } from "@/audio/YoutubeDeckEngine";
 import { crossfaderGains } from "@/audio/equalPower";
 import { useLibraryStore } from "@/store/libraryStore";
-import type { DeckId, DeckState, CuePoint } from "@/types";
+import type { IDeckEngine } from "@/audio/IDeckEngine";
+import type { DeckId, DeckState, CuePoint, TrackSource } from "@/types";
 
 const MIN_RATE = 0.92;
 const MAX_RATE = 1.08;
+// YouTube's discrete rates go well beyond a musical pitch-bend range; clamp
+// wide enough that engine.setRate can still snap to whatever it reports.
+const YOUTUBE_MIN_RATE = 0.25;
+const YOUTUBE_MAX_RATE = 2.0;
 const TAP_RESET_MS = 2000;
 const TAP_MIN_SAMPLES = 3;
 
@@ -19,10 +25,12 @@ function emptyDeckState(): DeckState {
     positionMillis: 0,
     durationMillis: 0,
     rate: 1.0,
+    availableRates: null,
     volume: 1.0,
     loop: { active: false, inMillis: 0, outMillis: 0 },
     cues: [null, null, null, null],
     effectActive: null,
+    source: "local",
   };
 }
 
@@ -51,35 +59,45 @@ interface MixerState {
   triggerEchoOut: (deck: DeckId) => Promise<void>;
 }
 
-const engines: Record<DeckId, DeckEngine> = {
+const localEngines: Record<DeckId, DeckEngine> = {
   A: new DeckEngine(),
   B: new DeckEngine(),
 };
+
+function engineOf(deck: DeckId, source: TrackSource): IDeckEngine {
+  return source === "youtube" ? youtubeEngines[deck] : localEngines[deck];
+}
 
 function applyDeckOutputVolume(get: () => MixerState, deck: DeckId) {
   const state = get();
   const { gainA, gainB } = crossfaderGains(state.crossfader);
   const crossGain = deck === "A" ? gainA : gainB;
   const finalVolume = state.decks[deck].volume * crossGain * state.masterVolume;
-  engines[deck].setVolume(finalVolume);
+  engineOf(deck, state.decks[deck].source).setVolume(finalVolume);
 }
 
 export const useMixerStore = create<MixerState>((set, get) => {
   (["A", "B"] as DeckId[]).forEach((deck) => {
-    engines[deck].onUpdate((snapshot) => {
-      set((state) => ({
-        decks: {
-          ...state.decks,
-          [deck]: {
-            ...state.decks[deck],
-            isLoaded: snapshot.isLoaded,
-            isPlaying: snapshot.isPlaying,
-            isBuffering: snapshot.isBuffering,
-            positionMillis: snapshot.positionMillis,
-            durationMillis: snapshot.durationMillis || state.decks[deck].durationMillis,
+    (["local", "youtube"] as TrackSource[]).forEach((source) => {
+      engineOf(deck, source).onUpdate((snapshot) => {
+        // Both engines stay subscribed at all times; only the one backing
+        // this deck's current track should be allowed to write into state,
+        // otherwise the idle engine's stale snapshot could clobber the live one.
+        if (get().decks[deck].source !== source) return;
+        set((state) => ({
+          decks: {
+            ...state.decks,
+            [deck]: {
+              ...state.decks[deck],
+              isLoaded: snapshot.isLoaded,
+              isPlaying: snapshot.isPlaying,
+              isBuffering: snapshot.isBuffering,
+              positionMillis: snapshot.positionMillis,
+              durationMillis: snapshot.durationMillis || state.decks[deck].durationMillis,
+            },
           },
-        },
-      }));
+        }));
+      });
     });
   });
 
@@ -104,16 +122,27 @@ export const useMixerStore = create<MixerState>((set, get) => {
       const track = useLibraryStore.getState().tracks.find((t) => t.id === trackId);
       if (!track) return;
       await get().initAudio();
-      const duration = await engines[deck].load(track.uri);
+
+      const previousSource = get().decks[deck].source;
+      if (previousSource !== track.source) {
+        await engineOf(deck, previousSource).unload();
+      }
+
+      const engine = engineOf(deck, track.source);
+      const sourceId = track.source === "youtube" ? track.youtubeVideoId ?? "" : track.uri ?? "";
+      const duration = await engine.load(sourceId);
+
       set((state) => ({
         decks: {
           ...state.decks,
           [deck]: {
             ...emptyDeckState(),
             trackId,
+            source: track.source,
             isLoaded: true,
             durationMillis: duration,
             volume: state.decks[deck].volume,
+            availableRates: engine.getAvailableRates(),
           },
         },
       }));
@@ -123,12 +152,14 @@ export const useMixerStore = create<MixerState>((set, get) => {
     togglePlay: async (deck) => {
       const d = get().decks[deck];
       if (!d.isLoaded) return;
-      if (d.isPlaying) await engines[deck].pause();
-      else await engines[deck].play();
+      const engine = engineOf(deck, d.source);
+      if (d.isPlaying) await engine.pause();
+      else await engine.play();
     },
 
     seek: async (deck, positionMillis) => {
-      await engines[deck].seek(positionMillis);
+      const d = get().decks[deck];
+      await engineOf(deck, d.source).seek(positionMillis);
     },
 
     setDeckVolume: (deck, volume) => {
@@ -145,13 +176,18 @@ export const useMixerStore = create<MixerState>((set, get) => {
     },
 
     setRate: async (deck, rate) => {
-      const clamped = Math.min(MAX_RATE, Math.max(MIN_RATE, rate));
-      set((state) => ({ decks: { ...state.decks, [deck]: { ...state.decks[deck], rate: clamped } } }));
-      await engines[deck].setRate(clamped);
+      const d = get().decks[deck];
+      const [min, max] = d.source === "youtube" ? [YOUTUBE_MIN_RATE, YOUTUBE_MAX_RATE] : [MIN_RATE, MAX_RATE];
+      const clamped = Math.min(max, Math.max(min, rate));
+      const engine = engineOf(deck, d.source);
+      await engine.setRate(clamped);
+      // YouTube snaps to its own available rate; reflect what actually took effect.
+      set((state) => ({ decks: { ...state.decks, [deck]: { ...state.decks[deck], rate: engine.getRate() } } }));
     },
 
     toggleKeylock: async (deck, enabled) => {
-      await engines[deck].setKeylock(enabled);
+      const d = get().decks[deck];
+      await engineOf(deck, d.source).setKeylock(enabled);
     },
 
     tapTempo: (deck) => {
@@ -191,9 +227,10 @@ export const useMixerStore = create<MixerState>((set, get) => {
       const track = useLibraryStore.getState().tracks.find((t) => t.id === trackId);
       const effectiveBpm = (track?.bpm ?? 120) * d.rate;
       const beatMs = 60000 / effectiveBpm;
+      const engine = engineOf(deck, d.source);
 
       if (beats === null) {
-        engines[deck].setLoop({ active: false, inMillis: 0, outMillis: 0 });
+        engine.setLoop({ active: false, inMillis: 0, outMillis: 0 });
         set((s) => ({
           decks: { ...s.decks, [deck]: { ...s.decks[deck], loop: { active: false, inMillis: 0, outMillis: 0 } } },
         }));
@@ -203,14 +240,14 @@ export const useMixerStore = create<MixerState>((set, get) => {
       const inMillis = d.positionMillis;
       const outMillis = inMillis + beatMs * beats;
       const loop = { active: true, inMillis, outMillis };
-      engines[deck].setLoop(loop);
+      engine.setLoop(loop);
       set((s) => ({ decks: { ...s.decks, [deck]: { ...s.decks[deck], loop } } }));
     },
 
     toggleLoop: (deck) => {
       const d = get().decks[deck];
       const loop = { ...d.loop, active: !d.loop.active };
-      engines[deck].setLoop(loop);
+      engineOf(deck, d.source).setLoop(loop);
       set((s) => ({ decks: { ...s.decks, [deck]: { ...s.decks[deck], loop } } }));
     },
 
@@ -223,28 +260,42 @@ export const useMixerStore = create<MixerState>((set, get) => {
     },
 
     jumpToCue: async (deck, index) => {
-      const cue = get().decks[deck].cues[index];
+      const d = get().decks[deck];
+      const cue = d.cues[index];
       if (!cue) return;
-      await engines[deck].seek(cue.positionMillis);
+      await engineOf(deck, d.source).seek(cue.positionMillis);
     },
 
     /**
      * Classic "power off" turntable effect: ramp playback rate down to
      * near-zero over ~1.3s, then stop and restore the original rate for
-     * next play. Pure rate automation - no extra audio nodes required.
+     * next play. Local decks glide continuously; YouTube decks only have a
+     * handful of discrete rates, so they step down through whichever of
+     * those are available instead of a smooth ramp.
      */
     triggerBrake: async (deck) => {
-      const engine = engines[deck];
-      const startRate = get().decks[deck].rate;
+      const d = get().decks[deck];
+      const engine = engineOf(deck, d.source);
+      const startRate = d.rate;
       set((s) => ({ decks: { ...s.decks, [deck]: { ...s.decks[deck], effectActive: "brake" } } }));
 
-      const steps = 12;
-      const stepDurationMs = 1300 / steps;
-      for (let i = 1; i <= steps; i++) {
-        const t = i / steps;
-        const rate = Math.max(0.02, startRate * (1 - t));
-        await engine.setRate(rate);
-        await new Promise((r) => setTimeout(r, stepDurationMs));
+      if (d.source === "youtube") {
+        const steps = (engine.getAvailableRates() ?? [1])
+          .filter((r) => r < startRate)
+          .sort((a, b) => b - a);
+        for (const rate of steps) {
+          await engine.setRate(rate);
+          await new Promise((r) => setTimeout(r, 260));
+        }
+      } else {
+        const steps = 12;
+        const stepDurationMs = 1300 / steps;
+        for (let i = 1; i <= steps; i++) {
+          const t = i / steps;
+          const rate = Math.max(0.02, startRate * (1 - t));
+          await engine.setRate(rate);
+          await new Promise((r) => setTimeout(r, stepDurationMs));
+        }
       }
       await engine.pause();
       await engine.setRate(startRate);
@@ -254,13 +305,14 @@ export const useMixerStore = create<MixerState>((set, get) => {
     /**
      * "Echo out" DJ trick: shrink the loop window down through a few
      * subdivisions while fading the deck's volume to silence, then stop.
-     * Approximates a delay/echo tail using only loop + volume automation
-     * (expo-av has no real-time DSP/effects graph to run true delay taps).
+     * Approximates a delay/echo tail using only loop + volume automation -
+     * works the same way on local (expo-av) and YouTube decks since both
+     * support continuous volume control.
      */
     triggerEchoOut: async (deck) => {
-      const engine = engines[deck];
       const state = get();
       const d = state.decks[deck];
+      const engine = engineOf(deck, d.source);
       const track = useLibraryStore.getState().tracks.find((t) => t.id === d.trackId);
       const effectiveBpm = (track?.bpm ?? 120) * d.rate;
       const beatMs = 60000 / effectiveBpm;

@@ -84,6 +84,7 @@ export async function importFileForCuratedTrack(curated: CuratedTrack): Promise<
     id,
     title: curated.title,
     artist: curated.artist,
+    source: "local",
     uri: finalUri,
     bpm: curated.approxBpm,
     genre: curated.genre,
@@ -97,7 +98,30 @@ function buildTrack(id: string, uri: string, filename: string): Track {
     id,
     title,
     artist,
+    source: "local",
     uri,
+    addedAt: Date.now(),
+  };
+}
+
+/** Adds a YouTube-backed track: no file to import, just the video ID + metadata. */
+export function buildYoutubeTrack(params: {
+  title: string;
+  artist: string;
+  youtubeVideoId: string;
+  bpm?: number;
+  genre?: string;
+  key?: string;
+}): Track {
+  return {
+    id: `yt-${params.youtubeVideoId}-${Date.now()}`,
+    title: params.title,
+    artist: params.artist,
+    source: "youtube",
+    youtubeVideoId: params.youtubeVideoId,
+    bpm: params.bpm,
+    genre: params.genre,
+    key: params.key,
     addedAt: Date.now(),
   };
 }

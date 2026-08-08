@@ -1,14 +1,8 @@
 import { Audio, AVPlaybackStatus, AVPlaybackStatusSuccess } from "expo-av";
 import type { LoopRegion } from "@/types";
+import type { DeckSnapshot, IDeckEngine } from "@/audio/IDeckEngine";
 
-export interface DeckSnapshot {
-  isLoaded: boolean;
-  isPlaying: boolean;
-  isBuffering: boolean;
-  positionMillis: number;
-  durationMillis: number;
-  didJustFinish: boolean;
-}
+export type { DeckSnapshot };
 
 /**
  * Wraps a single expo-av Sound instance and adds DJ-deck behavior expo-av
@@ -16,7 +10,7 @@ export interface DeckSnapshot {
  * every status tick, so loop tightness is bounded by progressUpdateIntervalMillis
  * below rather than sample-accurate) and keylock (pitch-preserving tempo change).
  */
-export class DeckEngine {
+export class DeckEngine implements IDeckEngine {
   private sound: Audio.Sound | null = null;
   private loop: LoopRegion = { active: false, inMillis: 0, outMillis: 0 };
   private listeners = new Set<(snapshot: DeckSnapshot) => void>();
@@ -130,5 +124,9 @@ export class DeckEngine {
 
   getRate() {
     return this.currentRate;
+  }
+
+  getAvailableRates() {
+    return null;
   }
 }

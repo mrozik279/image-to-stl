@@ -37,6 +37,7 @@ export function Deck({ deckId }: Props) {
 
   const effectBusy = deck.effectActive !== null;
   const position = seekPreview ?? deck.positionMillis;
+  const isYoutube = track?.source === "youtube";
 
   return (
     <View style={[styles.container, { borderColor: accent }]}>
@@ -45,9 +46,16 @@ export function Deck({ deckId }: Props) {
         <Text style={styles.bpm}>{formatBpm(track?.bpm)} BPM</Text>
       </View>
 
-      <Text style={styles.title} numberOfLines={1}>
-        {track ? track.title : "Brak utworu — wybierz z biblioteki"}
-      </Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title} numberOfLines={1}>
+          {track ? track.title : "Brak utworu — wybierz z biblioteki"}
+        </Text>
+        {isYoutube && (
+          <View style={styles.sourceBadge}>
+            <Text style={styles.sourceBadgeText}>YouTube</Text>
+          </View>
+        )}
+      </View>
       <Text style={styles.artist} numberOfLines={1}>
         {track?.artist ?? ""}
       </Text>
@@ -90,25 +98,43 @@ export function Deck({ deckId }: Props) {
 
       <View style={styles.sectionLabelRow}>
         <Text style={styles.sectionLabel}>PITCH {(deck.rate * 100 - 100).toFixed(1)}%</Text>
-        <Pressable
-          onPress={() => {
-            setKeylockOn(!keylockOn);
-            toggleKeylock(deckId, !keylockOn);
-          }}
-        >
-          <Text style={[styles.toggleText, keylockOn && { color: accent }]}>KEYLOCK</Text>
-        </Pressable>
+        {!isYoutube && (
+          <Pressable
+            onPress={() => {
+              setKeylockOn(!keylockOn);
+              toggleKeylock(deckId, !keylockOn);
+            }}
+          >
+            <Text style={[styles.toggleText, keylockOn && { color: accent }]}>KEYLOCK</Text>
+          </Pressable>
+        )}
       </View>
-      <Slider
-        style={styles.pitchSlider}
-        minimumValue={MIN_RATE}
-        maximumValue={MAX_RATE}
-        value={deck.rate}
-        onValueChange={(v) => setRate(deckId, v)}
-        minimumTrackTintColor={accent}
-        maximumTrackTintColor={colors.border}
-        thumbTintColor={accent}
-      />
+      {isYoutube ? (
+        <View style={styles.rowWrap}>
+          {(deck.availableRates ?? [0.5, 0.75, 1, 1.25, 1.5]).map((rate) => (
+            <Pressable
+              key={rate}
+              style={[styles.pill, Math.abs(deck.rate - rate) < 0.001 && { backgroundColor: accent }]}
+              onPress={() => setRate(deckId, rate)}
+            >
+              <Text style={[styles.pillText, Math.abs(deck.rate - rate) < 0.001 && { color: colors.background }]}>
+                {rate}×
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <Slider
+          style={styles.pitchSlider}
+          minimumValue={MIN_RATE}
+          maximumValue={MAX_RATE}
+          value={deck.rate}
+          onValueChange={(v) => setRate(deckId, v)}
+          minimumTrackTintColor={accent}
+          maximumTrackTintColor={colors.border}
+          thumbTintColor={accent}
+        />
+      )}
 
       <Text style={styles.sectionLabel}>LOOP (beaty)</Text>
       <View style={styles.rowWrap}>
@@ -190,7 +216,15 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
   deckLabel: { fontWeight: "800", fontSize: 13, letterSpacing: 1 },
   bpm: { color: colors.text, fontWeight: "700" },
-  title: { color: colors.text, fontSize: 15, fontWeight: "600" },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  title: { color: colors.text, fontSize: 15, fontWeight: "600", flexShrink: 1 },
+  sourceBadge: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  sourceBadgeText: { color: colors.textDim, fontSize: 9, fontWeight: "700", letterSpacing: 0.5 },
   artist: { color: colors.textDim, fontSize: 12, marginBottom: 8 },
   progressRow: { flexDirection: "row", alignItems: "center" },
   progressSlider: { flex: 1, height: 28, marginHorizontal: 4 },

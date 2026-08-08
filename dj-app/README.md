@@ -25,6 +25,53 @@ image-to-stl opisanym w głównym `CLAUDE.md`.
 - **Efekty** — `BRAKE` (efekt „wyłączania zasilania” gramofonu — płynne
   zjechanie z tempa do zera) i `ECHO OUT` (wygaszanie utworu przez malejące
   podpętle z opadającą głośnością, symulujące ogon echa).
+- **Szukaj online** — wyszukiwarka Spotify (metadane: tytuł/artysta/rok) z
+  dopasowaniem do YouTube (odtwarzanie) jednym przyciskiem — bez pobierania
+  plików na dysk. Zobacz „Streaming: Spotify + YouTube” niżej.
+- **Sugestie** — 30 utworów uznawanych za najważniejsze z dekad 1960–2019
+  (5 na dekadę), same metadane; podłączasz własny plik lub dodajesz przez
+  wyszukiwarkę online.
+
+## Streaming: Spotify + YouTube (opcjonalne)
+
+Ekran **Online** pozwala wyszukać utwór w katalogu Spotify i dodać go do
+biblioteki jako deck odtwarzany przez YouTube — bez ściągania czegokolwiek.
+To wymaga własnych, darmowych kluczy API (nie mogą być nigdzie „wbudowane za
+Ciebie” — trzeba założyć własne konto deweloperskie):
+
+```bash
+cp src/config/streamingSecrets.example.ts src/config/streamingSecrets.ts
+# uzupełnij spotifyClientId / spotifyClientSecret / youtubeApiKey
+```
+
+- **Spotify** — [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) →
+  Create app → Client ID + Client Secret. Używamy tylko przepływu Client
+  Credentials (bez logowania użytkownika) do wyszukiwania katalogu. Audio
+  Features (BPM/tonacja) jest best-effort — Spotify ograniczył ten endpoint
+  dla nowych aplikacji w listopadzie 2024, więc może zwrócić 403; wtedy BPM
+  i tak można ustawić przez TAP BPM.
+- **YouTube** — [console.cloud.google.com](https://console.cloud.google.com) →
+  nowy projekt → włącz „YouTube Data API v3” → Credentials → API key. Darmowy
+  limit (10 000 jednostek/dzień), jedno wyszukiwanie kosztuje 100 jednostek.
+
+**Dlaczego tak, a nie inaczej — twarde ograniczenia platform:**
+- **Spotify nie pozwala** stronom trzecim na miksowanie/przetwarzanie
+  surowego dźwięku — oficjalny SDK steruje wyłącznie odtwarzaczem w samej
+  apce Spotify (i wymaga konta Premium), więc Spotify służy tu tylko do
+  wyszukiwania metadanych, nigdy do odtwarzania.
+- **Pobieranie/ekstrakcja dźwięku z YouTube łamie ich regulamin** — dlatego
+  tego nie robimy. Zamiast tego używamy oficjalnego, legalnego **YouTube
+  IFrame Player API** osadzonego w WebView: dwa niezależne odtwarzacze wideo
+  dają prawdziwy crossfader (głośność 0–100% ciągła), ale tempo/pitch jest
+  ograniczone do kilku wartości narzuconych przez YouTube (typowo
+  0.25×–2×, bez zachowania wysokości dźwięku) — stąd na decku YouTube suwak
+  PITCH zamienia się w rząd przycisków zamiast płynnego suwaka.
+- Deck YouTube wymaga internetu i może pokazać reklamę; deck lokalny (własny
+  plik) działa w pełni offline jak wcześniej.
+- **Bezpieczeństwo**: `streamingSecrets.ts` ląduje wewnątrz paczki appki, więc
+  Client Secret Spotify jest teoretycznie możliwy do wydobycia przez
+  dekompilację. Do osobistego użytku to akceptowalne; do publikacji w
+  sklepie appek trzeba by przenieść wymianę tokenu na mały backend.
 
 ## Uczciwe ograniczenie techniczne
 
@@ -63,21 +110,31 @@ npm run typecheck
 
 ```
 dj-app/
-  App.tsx                  # zakładki Biblioteka / Mikser
+  App.tsx                    # zakładki + trwały pasek WebView dla decków YouTube
   src/
     audio/
-      DeckEngine.ts         # opakowanie expo-av Audio.Sound per deck + pętle
-      equalPower.ts          # krzywa crossfadera (equal-power)
+      IDeckEngine.ts          # wspólny interfejs deck-silnika (lokalny/YouTube)
+      DeckEngine.ts           # opakowanie expo-av Audio.Sound per deck + pętle
+      YoutubeDeckEngine.ts    # sterowanie odtwarzaczem YouTube przez WebView
+      youtubeBridgeHtml.ts    # strona-host z YouTube IFrame Player API
+      equalPower.ts           # krzywa crossfadera (equal-power)
+    services/
+      spotify.ts              # wyszukiwanie katalogu Spotify (Client Credentials)
+      youtube.ts               # wyszukiwanie YouTube Data API v3
+    config/
+      streamingSecrets.example.ts / streamingSecrets.ts (git-ignored)
     store/
-      libraryStore.ts        # zustand: utwory, wyszukiwanie, sortowanie, AsyncStorage
-      mixerStore.ts           # zustand: decki, crossfader, BPM sync, efekty
+      libraryStore.ts          # zustand: utwory, wyszukiwanie, sortowanie, AsyncStorage
+      mixerStore.ts             # zustand: decki (lokalny/YouTube), crossfader, BPM sync, efekty
     screens/
-      LibraryScreen.tsx
-      MixerScreen.tsx
+      LibraryScreen.tsx, MixerScreen.tsx, SuggestionsScreen.tsx, OnlineSearchScreen.tsx
     components/
-      Deck.tsx, Crossfader.tsx, TrackListItem.tsx, TrackEditModal.tsx
+      Deck.tsx, Crossfader.tsx, TrackListItem.tsx, TrackEditModal.tsx,
+      YoutubeDeckPlayerView.tsx
+    data/
+      curatedPlaylist.ts        # lista "najlepsze utwory 1960-2019" (metadane)
     utils/
-      importTrack.ts          # import + kopiowanie plików do sandboxa appki
+      importTrack.ts            # import lokalny + budowanie tracków YouTube
       format.ts
     types/index.ts
 ```
