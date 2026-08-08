@@ -19,6 +19,6 @@ data class ClickerState(
     val lastOpenedDayEpoch: Long = 0,
     val dailyStreak: Int = 0
 ) {
-    val tapPower: Long get() = 1 + treatLevel
+    val tapPower: Long get() = 1L + treatLevel
     val bonesPerSecond: Long get() = puppyLevel.toLong()
 }
