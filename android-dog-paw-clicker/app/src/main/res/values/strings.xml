@@ -1,0 +1,46 @@
+<resources>
+    <string name="app_name">Klikacz Łapki</string>
+
+    <string name="nav_clicker">Klikacz</string>
+    <string name="nav_shop">Sklep</string>
+    <string name="nav_achievements">Osiągnięcia</string>
+    <string name="nav_settings">Ustawienia</string>
+
+    <string name="tap_counter_label">Liczba kliknięć</string>
+    <string name="bones_label">Kości</string>
+    <string name="combo_label">Kombo x%1$s</string>
+    <string name="tap_hint">Stuknij w łapkę!</string>
+
+    <string name="shop_title">Sklep dla pieska</string>
+    <string name="shop_treat_name">Smaczniejszy przysmak</string>
+    <string name="shop_treat_desc">+1 kość za każde kliknięcie</string>
+    <string name="shop_puppy_name">Pomocny szczeniak</string>
+    <string name="shop_puppy_desc">+1 kość na sekundę (bez klikania)</string>
+    <string name="shop_level">Poziom %1$d</string>
+    <string name="shop_cost">Koszt: %1$s kości</string>
+    <string name="shop_buy">Kup</string>
+    <string name="shop_breeds_title">Rasy do odblokowania</string>
+    <string name="shop_breed_locked">Zablokowane – osiągnij %1$d kliknięć</string>
+    <string name="shop_breed_select">Wybierz</string>
+    <string name="shop_breed_selected">Wybrano</string>
+
+    <string name="achievements_title">Osiągnięcia</string>
+    <string name="achievement_locked_at">Odblokuj przy %1$d kliknięciach</string>
+    <string name="achievement_unlocked_toast">Osiągnięcie odblokowane: %1$s!</string>
+    <string name="breed_unlocked_toast">Nowa rasa odblokowana: %1$s!</string>
+
+    <string name="settings_title">Ustawienia</string>
+    <string name="settings_sound">Dźwięk</string>
+    <string name="settings_vibration">Wibracje</string>
+    <string name="settings_stats_title">Statystyki</string>
+    <string name="settings_total_taps">Łącznie kliknięć: %1$d</string>
+    <string name="settings_best_combo">Najlepsze kombo: x%1$d</string>
+    <string name="settings_daily_streak">Passa dni z rzędu: %1$d</string>
+    <string name="settings_reset">Zresetuj postęp</string>
+    <string name="settings_reset_confirm_title">Na pewno zresetować?</string>
+    <string name="settings_reset_confirm_text">Stracisz cały postęp, kości, ulepszenia i odblokowane rasy. Tej operacji nie można cofnąć.</string>
+    <string name="settings_reset_confirm_ok">Resetuj</string>
+    <string name="settings_reset_confirm_cancel">Anuluj</string>
+
+    <string name="daily_bonus_toast">Bonus dnia! +%1$d kości za powrót (passa: %2$d)</string>
+</resources>

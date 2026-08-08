@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.PawClicker" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#8D5A3C</item>
+        <item name="android:windowBackground">#FFF7EE</item>
+    </style>
+</resources>
