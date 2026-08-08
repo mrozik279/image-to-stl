@@ -94,13 +94,12 @@ zbuduj z linii poleceń, mając zainstalowany Android SDK:
 
 ```bash
 cd android-dog-paw-clicker
-./gradlew assembleDebug          # wymaga wygenerowania gradlew/gradlew.bat
+./gradlew assembleDebug
 ```
 
-> Ten katalog nie zawiera pliku `gradlew` (skryptu wrappera) ani binarnego
-> `gradle-wrapper.jar` — wygeneruj je lokalnie poleceniem
-> `gradle wrapper --gradle-version 8.7` (wymaga zainstalowanego Gradle) albo
-> po prostu otwórz folder w Android Studio, które samo dogeneruje wrapper.
+Wrapper Gradle (`gradlew`, `gradlew.bat`, `gradle/wrapper/*`) jest już w repo —
+nie trzeba nic dogenerowywać, wystarczy mieć zainstalowany Android SDK
+(Android Studio go doinstaluje automatycznie przy pierwszym otwarciu projektu).
 
 Wymagania:
 - Android Studio Koala+ / Gradle 8.7+ / AGP 8.5.2
