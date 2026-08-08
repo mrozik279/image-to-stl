@@ -1,0 +1,50 @@
+name: Build Dog Paw Clicker APK
+
+on:
+  push:
+    branches:
+      - claude/android-dog-paw-clicker-6o72a2
+    paths:
+      - "android-dog-paw-clicker/**"
+      - ".github/workflows/android-build.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-dog-paw-clicker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dog-paw-clicker-debug-apk
+          path: android-dog-paw-clicker/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish APK to a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dog-paw-clicker-debug-${{ github.run_number }}
+          name: "Klikacz Łapki – build ${{ github.run_number }}"
+          body: "Automatycznie zbudowane debugowe APK. Pobierz app-debug.apk poniżej i zainstaluj na telefonie."
+          prerelease: true
+          files: android-dog-paw-clicker/app/build/outputs/apk/debug/app-debug.apk
