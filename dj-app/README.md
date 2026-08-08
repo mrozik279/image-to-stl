@@ -37,12 +37,18 @@ image-to-stl opisanym w głównym `CLAUDE.md`.
 Ekran **Online** pozwala wyszukać utwór w katalogu Spotify i dodać go do
 biblioteki jako deck odtwarzany przez YouTube — bez ściągania czegokolwiek.
 To wymaga własnych, darmowych kluczy API (nie mogą być nigdzie „wbudowane za
-Ciebie” — trzeba założyć własne konto deweloperskie):
+Ciebie” — trzeba założyć własne konto deweloperskie). Dwa sposoby ich wpisania:
 
-```bash
-cp src/config/streamingSecrets.example.ts src/config/streamingSecrets.ts
-# uzupełnij spotifyClientId / spotifyClientSecret / youtubeApiKey
-```
+- **Bezpośrednio w aplikacji, na telefonie** (nie trzeba komputera ani
+  edytora tekstu): zakładka **Online** → **„Klucze”** w prawym górnym rogu →
+  formularz zapisuje je przez `AsyncStorage` (na web: `localStorage`) tylko
+  na tym urządzeniu.
+- **W pliku, jeśli budujesz z komputera:**
+  ```bash
+  cp src/config/streamingSecrets.example.ts src/config/streamingSecrets.ts
+  # uzupełnij spotifyClientId / spotifyClientSecret / youtubeApiKey
+  ```
+  Klucze wpisane w aplikacji zawsze mają pierwszeństwo nad tym plikiem.
 
 - **Spotify** — [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) →
   Create app → Client ID + Client Secret. Używamy tylko przepływu Client
@@ -68,10 +74,11 @@ cp src/config/streamingSecrets.example.ts src/config/streamingSecrets.ts
   PITCH zamienia się w rząd przycisków zamiast płynnego suwaka.
 - Deck YouTube wymaga internetu i może pokazać reklamę; deck lokalny (własny
   plik) działa w pełni offline jak wcześniej.
-- **Bezpieczeństwo**: `streamingSecrets.ts` ląduje wewnątrz paczki appki, więc
-  Client Secret Spotify jest teoretycznie możliwy do wydobycia przez
-  dekompilację. Do osobistego użytku to akceptowalne; do publikacji w
-  sklepie appek trzeba by przenieść wymianę tokenu na mały backend.
+- **Bezpieczeństwo**: klucze (czy to z formularza w aplikacji, czy z pliku
+  `streamingSecrets.ts`) trafiają na urządzenie/do paczki appki bez
+  szyfrowania, więc Client Secret Spotify jest teoretycznie możliwy do
+  wydobycia. Do osobistego użytku to akceptowalne; do publikacji w sklepie
+  appek trzeba by przenieść wymianę tokenu na mały backend.
 
 ## Uczciwe ograniczenie techniczne
 
@@ -123,9 +130,11 @@ dj-app/
       youtube.ts               # wyszukiwanie YouTube Data API v3
     config/
       streamingSecrets.example.ts / streamingSecrets.ts (git-ignored)
+      streamingConfig.ts        # scala klucze z formularza (priorytet) i z pliku
     store/
       libraryStore.ts          # zustand: utwory, wyszukiwanie, sortowanie, AsyncStorage
       mixerStore.ts             # zustand: decki (lokalny/YouTube), crossfader, BPM sync, efekty
+      streamingKeysStore.ts      # zustand: klucze wpisane w apce (AsyncStorage), edytowalne bez komputera
     screens/
       LibraryScreen.tsx, MixerScreen.tsx, SuggestionsScreen.tsx, OnlineSearchScreen.tsx
     components/

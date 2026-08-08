@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, SafeAreaView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { LibraryScreen } from "@/screens/LibraryScreen";
 import { MixerScreen } from "@/screens/MixerScreen";
@@ -7,6 +7,7 @@ import { OnlineSearchScreen } from "@/screens/OnlineSearchScreen";
 import { YoutubeDeckPlayerView } from "@/components/YoutubeDeckPlayerView";
 import { youtubeEngines } from "@/audio/YoutubeDeckEngine";
 import { useMixerStore } from "@/store/mixerStore";
+import { useStreamingKeysStore } from "@/store/streamingKeysStore";
 import { colors } from "@/theme";
 import type { DeckId } from "@/types";
 
@@ -17,6 +18,11 @@ export default function App() {
   const sourceA = useMixerStore((s) => s.decks.A.source);
   const sourceB = useMixerStore((s) => s.decks.B.source);
   const anyYoutubeLoaded = sourceA === "youtube" || sourceB === "youtube";
+  const hydrateStreamingKeys = useStreamingKeysStore((s) => s.hydrate);
+
+  useEffect(() => {
+    hydrateStreamingKeys();
+  }, [hydrateStreamingKeys]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

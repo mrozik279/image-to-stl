@@ -1,4 +1,4 @@
-import { STREAMING_SECRETS } from "@/config/streamingConfig";
+import { getStreamingKeys } from "@/config/streamingConfig";
 
 export interface YoutubeSearchResult {
   videoId: string;
@@ -14,7 +14,7 @@ export async function searchYoutubeVideos(query: string, maxResults = 5): Promis
     type: "video",
     videoCategoryId: "10", // Music
     maxResults: String(maxResults),
-    key: STREAMING_SECRETS.youtubeApiKey,
+    key: getStreamingKeys().youtubeApiKey,
   });
 
   const res = await fetch(`https://www.googleapis.com/youtube/v3/search?${params.toString()}`);

@@ -1,4 +1,4 @@
-import { STREAMING_SECRETS } from "@/config/streamingConfig";
+import { getStreamingKeys } from "@/config/streamingConfig";
 
 export interface SpotifySearchResult {
   spotifyId: string;
@@ -11,7 +11,7 @@ export interface SpotifySearchResult {
   albumArtUrl?: string;
 }
 
-let cachedToken: { value: string; expiresAt: number } | null = null;
+let cachedToken: { value: string; expiresAt: number; forClientId: string } | null = null;
 
 /**
  * Client Credentials flow - app-level auth, no Spotify user login needed.
@@ -19,11 +19,13 @@ let cachedToken: { value: string; expiresAt: number } | null = null;
  * we use Spotify purely for metadata/discovery, YouTube for playback).
  */
 async function getAccessToken(): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 5000) {
+  const { spotifyClientId, spotifyClientSecret } = getStreamingKeys();
+
+  if (cachedToken && cachedToken.forClientId === spotifyClientId && cachedToken.expiresAt > Date.now() + 5000) {
     return cachedToken.value;
   }
 
-  const basic = base64Encode(`${STREAMING_SECRETS.spotifyClientId}:${STREAMING_SECRETS.spotifyClientSecret}`);
+  const basic = base64Encode(`${spotifyClientId}:${spotifyClientSecret}`);
   const res = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
     headers: {
@@ -38,7 +40,7 @@ async function getAccessToken(): Promise<string> {
   }
 
   const json = await res.json();
-  cachedToken = { value: json.access_token, expiresAt: Date.now() + json.expires_in * 1000 };
+  cachedToken = { value: json.access_token, expiresAt: Date.now() + json.expires_in * 1000, forClientId: spotifyClientId };
   return cachedToken.value;
 }
 
