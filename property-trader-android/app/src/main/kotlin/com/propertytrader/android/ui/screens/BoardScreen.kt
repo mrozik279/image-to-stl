@@ -32,7 +32,12 @@ fun BoardScreen(
     onPurchaseDecision: (Boolean) -> Unit,
     onJailDecision: (JailAction) -> Unit,
     onEndTurn: () -> Unit,
+    onOpenTrade: () -> Unit,
+    onTradeResponse: (Boolean) -> Unit,
 ) {
+    val canOpenTrade = gameState.pendingTrade == null &&
+        (gameState.phase == TurnPhase.AWAITING_ROLL || gameState.phase == TurnPhase.TURN_READY_TO_END) &&
+        gameState.players.count { !it.bankrupt } >= 2
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -57,11 +62,20 @@ fun BoardScreen(
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-            Button(onClick = onRollDice, enabled = gameState.phase == TurnPhase.AWAITING_ROLL) {
+            Button(
+                onClick = onRollDice,
+                enabled = gameState.phase == TurnPhase.AWAITING_ROLL && gameState.pendingTrade == null,
+            ) {
                 Text("Rzuc koscmi")
             }
-            Button(onClick = onEndTurn, enabled = gameState.phase == TurnPhase.TURN_READY_TO_END) {
+            Button(
+                onClick = onEndTurn,
+                enabled = gameState.phase == TurnPhase.TURN_READY_TO_END && gameState.pendingTrade == null,
+            ) {
                 Text("Zakoncz ture")
+            }
+            Button(onClick = onOpenTrade, enabled = canOpenTrade) {
+                Text("Handel")
             }
         }
 
@@ -87,5 +101,6 @@ fun BoardScreen(
         gameState = gameState,
         onPurchaseDecision = onPurchaseDecision,
         onJailDecision = onJailDecision,
+        onTradeResponse = onTradeResponse,
     )
 }

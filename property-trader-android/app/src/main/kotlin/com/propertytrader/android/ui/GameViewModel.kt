@@ -7,13 +7,14 @@ import com.propertytrader.core.engine.GameEvent
 import com.propertytrader.core.engine.JailAction
 import com.propertytrader.core.model.GameState
 import com.propertytrader.core.model.Player
+import com.propertytrader.core.model.TradeOffer
 import com.propertytrader.core.model.TurnPhase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-enum class Screen { SETUP, BOARD, GAME_OVER }
+enum class Screen { SETUP, BOARD, TRADE, GAME_OVER }
 
 data class GameUiState(
     val screen: Screen = Screen.SETUP,
@@ -59,6 +60,25 @@ class GameViewModel : ViewModel() {
         _uiState.value = GameUiState()
     }
 
+    fun openTrade() {
+        _uiState.update { it.copy(screen = Screen.TRADE) }
+    }
+
+    fun cancelTrade() {
+        _uiState.update { it.copy(screen = Screen.BOARD) }
+    }
+
+    fun proposeTrade(offer: TradeOffer) {
+        val current = _uiState.value.gameState ?: return
+        val (newState, events) = engine.proposeTrade(current, offer)
+        val messages = events.mapNotNull { describeEvent(it, newState) }
+        _uiState.update { state ->
+            state.copy(screen = Screen.BOARD, gameState = newState, eventLog = (state.eventLog + messages).takeLast(50))
+        }
+    }
+
+    fun respondToTrade(accept: Boolean) = applyAction { engine.respondToTrade(it, accept) }
+
     private fun applyAction(action: (GameState) -> Pair<GameState, List<GameEvent>>) {
         val current = _uiState.value.gameState ?: return
         val (newState, events) = action(current)
@@ -98,6 +118,12 @@ class GameViewModel : ViewModel() {
             }
             is GameEvent.PlayerBankrupt -> "${playerName(event.playerId)} oglasza bankructwo."
             is GameEvent.GameOver -> "Koniec gry! Zwyciezca: ${playerName(event.winnerId)}."
+            is GameEvent.TradeProposed ->
+                "${playerName(event.fromPlayerId)} proponuje wymiane graczowi ${playerName(event.toPlayerId)}."
+            is GameEvent.TradeAccepted ->
+                "${playerName(event.toPlayerId)} akceptuje wymiane z ${playerName(event.fromPlayerId)}."
+            is GameEvent.TradeDeclined ->
+                "${playerName(event.toPlayerId)} odrzuca wymiane z ${playerName(event.fromPlayerId)}."
         }
     }
 

@@ -1,9 +1,14 @@
 package com.propertytrader.android.ui.components
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.propertytrader.core.board.PropertySpace
 import com.propertytrader.core.board.TransitSpace
 import com.propertytrader.core.board.UtilitySpace
@@ -17,7 +22,38 @@ fun DecisionDialogs(
     gameState: GameState,
     onPurchaseDecision: (Boolean) -> Unit,
     onJailDecision: (JailAction) -> Unit,
+    onTradeResponse: (Boolean) -> Unit,
 ) {
+    val pendingTrade = gameState.pendingTrade
+    if (pendingTrade != null) {
+        val fromName = gameState.players.first { it.id == pendingTrade.fromPlayerId }.name
+        val toName = gameState.players.first { it.id == pendingTrade.toPlayerId }.name
+        val offeredNames = pendingTrade.offeredPropertyIndices.map { gameState.board[it].name }
+        val requestedNames = pendingTrade.requestedPropertyIndices.map { gameState.board[it].name }
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Oferta handlowa dla $toName") },
+            text = {
+                Column {
+                    Text("$fromName oferuje:")
+                    if (offeredNames.isNotEmpty()) Text("- " + offeredNames.joinToString(", "))
+                    if (pendingTrade.offeredCash > 0) Text("- gotowka: ${pendingTrade.offeredCash}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("W zamian za:")
+                    if (requestedNames.isNotEmpty()) Text("- " + requestedNames.joinToString(", "))
+                    if (pendingTrade.requestedCash > 0) Text("- gotowka: ${pendingTrade.requestedCash}")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { onTradeResponse(true) }) { Text("Akceptuj") }
+            },
+            dismissButton = {
+                TextButton(onClick = { onTradeResponse(false) }) { Text("Odrzuc") }
+            },
+        )
+        return
+    }
+
     when (gameState.phase) {
         TurnPhase.AWAITING_PURCHASE_DECISION -> {
             val space = gameState.board[gameState.currentPlayer.position]

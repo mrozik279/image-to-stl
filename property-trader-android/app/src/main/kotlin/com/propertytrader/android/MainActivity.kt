@@ -12,6 +12,7 @@ import com.propertytrader.android.ui.Screen
 import com.propertytrader.android.ui.screens.BoardScreen
 import com.propertytrader.android.ui.screens.GameOverScreen
 import com.propertytrader.android.ui.screens.SetupScreen
+import com.propertytrader.android.ui.screens.TradeScreen
 import com.propertytrader.android.ui.theme.PropertyTraderTheme
 
 class MainActivity : ComponentActivity() {
@@ -41,6 +42,15 @@ fun AppRoot(viewModel: GameViewModel = viewModel()) {
                 onPurchaseDecision = viewModel::decidePurchase,
                 onJailDecision = viewModel::decideJail,
                 onEndTurn = viewModel::endTurn,
+                onOpenTrade = viewModel::openTrade,
+                onTradeResponse = viewModel::respondToTrade,
+            )
+        }
+        Screen.TRADE -> uiState.gameState?.let { gameState ->
+            TradeScreen(
+                gameState = gameState,
+                onPropose = viewModel::proposeTrade,
+                onCancel = viewModel::cancelTrade,
             )
         }
         Screen.GAME_OVER -> uiState.gameState?.let { gameState ->

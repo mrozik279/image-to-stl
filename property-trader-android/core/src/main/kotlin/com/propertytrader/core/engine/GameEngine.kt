@@ -12,6 +12,7 @@ import com.propertytrader.core.board.TransitSpace
 import com.propertytrader.core.board.UtilitySpace
 import com.propertytrader.core.model.GameState
 import com.propertytrader.core.model.Player
+import com.propertytrader.core.model.TradeOffer
 import com.propertytrader.core.model.TurnPhase
 
 class GameEngine(private val dice: Dice = Dice()) {
@@ -81,6 +82,41 @@ class GameEngine(private val dice: Dice = Dice()) {
             phase = nextPhase,
             lastDice = null,
         )
+    }
+
+    fun proposeTrade(state: GameState, offer: TradeOffer): Pair<GameState, List<GameEvent>> {
+        if (!isTradeValid(state, offer)) return state to emptyList()
+        return state.copy(pendingTrade = offer) to listOf(GameEvent.TradeProposed(offer.fromPlayerId, offer.toPlayerId))
+    }
+
+    fun respondToTrade(state: GameState, accept: Boolean): Pair<GameState, List<GameEvent>> {
+        val offer = state.pendingTrade ?: return state to emptyList()
+        if (!accept || !isTradeValid(state, offer)) {
+            return state.copy(pendingTrade = null) to listOf(GameEvent.TradeDeclined(offer.fromPlayerId, offer.toPlayerId))
+        }
+
+        val newOwnership = state.ownership.toMutableMap()
+        offer.offeredPropertyIndices.forEach { newOwnership[it] = offer.toPlayerId }
+        offer.requestedPropertyIndices.forEach { newOwnership[it] = offer.fromPlayerId }
+
+        val newState = state.copy(ownership = newOwnership, pendingTrade = null)
+            .let { updatePlayer(it, offer.fromPlayerId) { p -> p.copy(cash = p.cash - offer.offeredCash + offer.requestedCash) } }
+            .let { updatePlayer(it, offer.toPlayerId) { p -> p.copy(cash = p.cash - offer.requestedCash + offer.offeredCash) } }
+        return newState to listOf(GameEvent.TradeAccepted(offer.fromPlayerId, offer.toPlayerId))
+    }
+
+    private fun isTradeValid(state: GameState, offer: TradeOffer): Boolean {
+        if (offer.fromPlayerId == offer.toPlayerId) return false
+        val from = state.players.firstOrNull { it.id == offer.fromPlayerId } ?: return false
+        val to = state.players.firstOrNull { it.id == offer.toPlayerId } ?: return false
+        if (from.bankrupt || to.bankrupt) return false
+        if (offer.offeredCash < 0 || offer.requestedCash < 0) return false
+        if (from.cash < offer.offeredCash || to.cash < offer.requestedCash) return false
+        if (offer.offeredPropertyIndices.any { state.ownership[it] != from.id }) return false
+        if (offer.requestedPropertyIndices.any { state.ownership[it] != to.id }) return false
+        val isEmpty = offer.offeredPropertyIndices.isEmpty() && offer.offeredCash == 0 &&
+            offer.requestedPropertyIndices.isEmpty() && offer.requestedCash == 0
+        return !isEmpty
     }
 
     private fun payBailAndStay(state: GameState, player: Player): Pair<GameState, List<GameEvent>> {

@@ -20,6 +20,7 @@ data class GameState(
     val roundNumber: Int = 1,
     val roundLimit: Int? = null,
     val winnerId: Int? = null,
+    val pendingTrade: TradeOffer? = null,
 ) {
     val currentPlayer: Player get() = players[currentPlayerIndex]
 }

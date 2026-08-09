@@ -13,16 +13,17 @@ app). Treat it as a separate product.
 ```
 property-trader-android/
 ├── core/   pure-Kotlin/JVM module: board, players, game state, turn engine. No Android dependency.
-└── app/    Android app: Jetpack Compose UI (setup screen, board, game over).
+└── app/    Android app: Jetpack Compose UI (setup, board, trade, game over).
 ```
 
 ## What's verified, what isn't
 
-**`:core` is unit-tested and all 31 tests pass** (board layout, dice,
+**`:core` is unit-tested and all 39 tests pass** (board layout, dice,
 movement/Go bonus, purchase/rent — including full-color-group doubling,
 station and utility rent scaling — jail (bail, doubles, forced 3rd-attempt
-release), bankruptcy and both game-over conditions). Verified in this
-session with plain Gradle + a JDK. See `core/src/test/kotlin/`.
+release), bankruptcy, both game-over conditions, and player-to-player
+trading). Verified in this session with plain Gradle + a JDK.
+See `core/src/test/kotlin/`.
 
 **`:app` (the Compose UI) has not been compiled.** This sandbox's egress
 policy blocks `dl.google.com`, which is where the Android Gradle Plugin and
@@ -61,10 +62,17 @@ treat it as **unverified** until built in Android Studio.
 - Game ends when only one player remains, or (optional) at a configurable
   round limit — highest net worth (cash + property price) wins, ties broken
   by lowest player id.
+- Player-to-player trading: from the board screen (when no other decision
+  is pending), the current player opens the "Handel" screen, picks a
+  counterpart, and builds a two-sided offer of properties + cash. Proposing
+  it hands control to a modal accept/decline dialog (pass the phone) for the
+  counterpart; accepting swaps everything atomically, declining or an offer
+  that's gone stale (e.g. a property changed hands since it was proposed)
+  is a no-op. See `GameEngine.proposeTrade` / `respondToTrade`.
 
 ## Deliberately out of scope for v0
 
 Houses/hotels, Chance/Community-Chest style cards (the six "Event" spaces
-are placeholders with no effect yet), trading between players, auctions
-when a purchase is declined, partial payment/mortgaging under bankruptcy,
-save/resume, and any online/networked multiplayer.
+are placeholders with no effect yet), auctions when a purchase is declined,
+partial payment/mortgaging under bankruptcy, save/resume, and any
+online/networked multiplayer.

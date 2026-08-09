@@ -11,4 +11,7 @@ sealed interface GameEvent {
     data class LeftJail(val playerId: Int, val paidBail: Boolean) : GameEvent
     data class PlayerBankrupt(val playerId: Int, val creditorId: Int?) : GameEvent
     data class GameOver(val winnerId: Int, val reason: String) : GameEvent
+    data class TradeProposed(val fromPlayerId: Int, val toPlayerId: Int) : GameEvent
+    data class TradeAccepted(val fromPlayerId: Int, val toPlayerId: Int) : GameEvent
+    data class TradeDeclined(val fromPlayerId: Int, val toPlayerId: Int) : GameEvent
 }
