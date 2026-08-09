@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "DJ Beton",
+    "slug": "dj-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b0b0f",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"],
+        "NSAppleMusicUsageDescription": "Potrzebny dostęp do biblioteki muzycznej, aby wczytywać utwory do miksowania.",
+        "NSDocumentsFolderUsageDescription": "Potrzebny dostęp do plików, aby importować utwory audio."
+      }
+    },
+    "android": {
+      "package": "com.djapp.mixer",
+      "permissions": ["READ_EXTERNAL_STORAGE", "READ_MEDIA_AUDIO"]
+    }
+  }
+}
