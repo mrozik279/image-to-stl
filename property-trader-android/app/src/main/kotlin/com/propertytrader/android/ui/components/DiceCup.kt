@@ -18,7 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.graphicsLayer
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -49,7 +49,7 @@ private fun DieFace(value: Int?, rotationDegrees: Float) {
     Box(
         modifier = Modifier
             .size(44.dp)
-            .graphicsLayer { rotationZ = rotationDegrees }
+            .rotate(rotationDegrees)
             .background(Color.White, RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center,
     ) {
