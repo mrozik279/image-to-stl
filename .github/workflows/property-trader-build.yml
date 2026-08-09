@@ -1,0 +1,63 @@
+name: Property Trader - build APK
+
+on:
+  push:
+    branches:
+      - claude/monopoly-android-game-mnrjs1
+    paths:
+      - "property-trader-android/**"
+      - ".github/workflows/property-trader-build.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: property-trader-android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Run core engine unit tests
+        run: ./gradlew :core:test --no-daemon
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Upload APK as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: property-trader-debug-apk
+          path: property-trader-android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish APK to a rolling release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: property-trader-debug
+          name: "Property Trader - debug APK (auto-built)"
+          body: |
+            Automatycznie zbudowane APK debugowe gry Property Trader.
+
+            Branch: `${{ github.ref_name }}`
+            Commit: `${{ github.sha }}`
+
+            Pobierz `app-debug.apk` poniżej i zainstaluj na telefonie
+            (Android, minSdk 26). Może być potrzebne włączenie instalacji
+            aplikacji z nieznanych źródeł w ustawieniach telefonu.
+          files: property-trader-android/app/build/outputs/apk/debug/app-debug.apk
+          make_latest: true

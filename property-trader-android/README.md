@@ -27,25 +27,36 @@ building, the Event card deck, and the doubles/Free-Parking/extra-roll bonus
 mechanics). Verified in this session with plain Gradle + a JDK.
 See `core/src/test/kotlin/`.
 
-**`:app` (the Compose UI) has not been compiled.** This sandbox's egress
-policy blocks `dl.google.com`, which is where the Android Gradle Plugin and
-the AndroidX/Compose artifacts live — there is no way to build or emulate
-an Android app here (same constraint as `android-app/`, see its README).
-The UI code was written carefully against known-stable, standard Compose
-Material3 APIs and mirrors patterns already used in `android-app/`, but
-treat it as **unverified** until built in Android Studio.
+**`:app` (the Compose UI) has not been compiled locally in this session.**
+This sandbox's egress policy blocks `dl.google.com`, which is where the
+Android Gradle Plugin and the AndroidX/Compose artifacts live — there is no
+way to build or emulate an Android app here (same constraint as
+`android-app/`, see its README). The UI code was written carefully against
+known-stable, standard Compose Material3 APIs and mirrors patterns already
+used in `android-app/`, but treat it as unverified until it's actually built
+somewhere with normal internet access — see the CI option below, which does
+exactly that.
 
 ## Building it
 
-1. Open `property-trader-android/` in Android Studio (needs normal internet
-   access to resolve AGP/AndroidX/Compose — nothing unusual, a standard
-   two-module Gradle/AGP project).
-2. Run the `app` configuration on a device or emulator (minSdk 26).
-3. Or from a terminal with the Android SDK and JDK 17 installed:
-   ```bash
-   ./gradlew :core:test          # game engine unit tests
-   ./gradlew :app:assembleDebug  # build the APK
-   ```
+**Easiest: let GitHub build it for you.** `.github/workflows/property-trader-build.yml`
+builds `:core:test` and `:app:assembleDebug` on GitHub's runners (which
+aren't network-restricted) on every push to this branch, or on demand via
+the "Run workflow" button under the Actions tab. On success it publishes
+`app-debug.apk` to a rolling GitHub Release tagged `property-trader-debug` —
+open that release on the repo (works fine from a phone browser or the
+GitHub app) and download the APK directly; Android will prompt to allow
+installing from that source the first time.
+
+**Locally, with the Android SDK and JDK 17 installed:**
+```bash
+cd property-trader-android
+./gradlew :core:test          # game engine unit tests
+./gradlew :app:assembleDebug  # build the APK
+```
+Or open `property-trader-android/` in Android Studio (Gradle sync needs
+normal internet access) and run the `app` configuration on a device or
+emulator (minSdk 26).
 
 ## Rules implemented
 
