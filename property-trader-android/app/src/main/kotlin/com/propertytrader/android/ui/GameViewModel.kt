@@ -15,12 +15,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-enum class Screen { SETUP, BOARD, TRADE, BUILD, GAME_OVER }
+enum class Screen { SETUP, BOARD, TRADE, BUILD, RULES, GAME_OVER }
 
 data class GameUiState(
     val screen: Screen = Screen.SETUP,
     val gameState: GameState? = null,
     val eventLog: List<String> = emptyList(),
+    val previousScreen: Screen = Screen.SETUP,
 )
 
 class GameViewModel : ViewModel() {
@@ -28,9 +29,15 @@ class GameViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
-    fun startGame(playerNames: List<String>, startingCash: Int = DEFAULT_STARTING_CASH, roundLimit: Int? = null) {
+    fun startGame(
+        playerNames: List<String>,
+        tokenColors: List<Long> = TOKEN_COLORS,
+        startingCash: Int = DEFAULT_STARTING_CASH,
+        roundLimit: Int? = null,
+    ) {
         val players = playerNames.mapIndexed { index, name ->
-            Player(id = index, name = name, tokenColor = TOKEN_COLORS[index % TOKEN_COLORS.size], cash = startingCash)
+            val color = tokenColors.getOrElse(index) { TOKEN_COLORS[index % TOKEN_COLORS.size] }
+            Player(id = index, name = name, tokenColor = color, cash = startingCash)
         }
         val state = GameState(
             board = BoardFactory.classicBoard(),
@@ -92,6 +99,14 @@ class GameViewModel : ViewModel() {
     fun buildHouse(spaceIndex: Int) = applyAction { engine.buildHouse(it, spaceIndex) }
 
     fun useExtraRoll() = applyAction { engine.useExtraRollToken(it) }
+
+    fun openRules() {
+        _uiState.update { it.copy(previousScreen = it.screen, screen = Screen.RULES) }
+    }
+
+    fun closeRules() {
+        _uiState.update { it.copy(screen = it.previousScreen) }
+    }
 
     private fun applyAction(action: (GameState) -> Pair<GameState, List<GameEvent>>) {
         val current = _uiState.value.gameState ?: return

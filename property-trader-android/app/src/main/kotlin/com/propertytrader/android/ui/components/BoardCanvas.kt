@@ -1,5 +1,7 @@
 package com.propertytrader.android.ui.components
 
+import android.graphics.Paint
+import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -8,9 +10,19 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import com.propertytrader.core.board.ColorGroup
+import com.propertytrader.core.board.EventSpace
+import com.propertytrader.core.board.FreeParkingSpace
+import com.propertytrader.core.board.GoSpace
+import com.propertytrader.core.board.GoToJailSpace
+import com.propertytrader.core.board.JailSpace
 import com.propertytrader.core.board.PropertySpace
 import com.propertytrader.core.board.Space
+import com.propertytrader.core.board.TaxSpace
+import com.propertytrader.core.board.TransitSpace
+import com.propertytrader.core.board.UtilitySpace
 import com.propertytrader.core.model.GameState
 
 private const val GRID = 11
@@ -19,6 +31,7 @@ private const val GRID = 11
 fun BoardCanvas(gameState: GameState, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val cell = size.minDimension / GRID
+        drawBoardCenter(cell)
         gameState.board.forEach { space ->
             val (gx, gy) = gridPosition(space.index)
             val topLeft = Offset(gx * cell, gy * cell)
@@ -35,10 +48,30 @@ private fun gridPosition(index: Int): Pair<Int, Int> = when (index) {
     else -> 10 to 10
 }
 
+private fun DrawScope.drawBoardCenter(cell: Float) {
+    drawRect(
+        color = Color(0xFFF7F2E7),
+        topLeft = Offset(cell, cell),
+        size = Size(cell * 9, cell * 9),
+    )
+}
+
 private fun DrawScope.drawSpace(space: Space, gameState: GameState, topLeft: Offset, cell: Float) {
     val cellSize = Size(cell, cell)
     drawRect(color = spaceColor(space), topLeft = topLeft, size = cellSize)
     drawRect(color = Color.Black, topLeft = topLeft, size = cellSize, style = Stroke(width = 1f))
+
+    val glyph = spaceGlyph(space)
+    drawLabel(glyph, topLeft.x + cell / 2f, topLeft.y + cell * 0.32f, cell * 0.17f, bold = true)
+
+    val label = spaceLabel(space)
+    if (label.isNotEmpty()) {
+        drawLabel(label, topLeft.x + cell / 2f, topLeft.y + cell * 0.5f, cell * 0.15f)
+    }
+
+    if (space is PropertySpace) {
+        drawLabel("${space.price}", topLeft.x + cell / 2f, topLeft.y + cell * 0.68f, cell * 0.13f)
+    }
 
     val ownerId = gameState.ownership[space.index]
     if (ownerId != null) {
@@ -54,8 +87,28 @@ private fun DrawScope.drawSpace(space: Space, gameState: GameState, topLeft: Off
     val playersHere = gameState.players.filter { it.position == space.index && !it.bankrupt }
     playersHere.forEachIndexed { i, player ->
         val offsetX = topLeft.x + cell * (0.25f + (i % 2) * 0.5f)
-        val offsetY = topLeft.y + cell * (0.25f + (i / 2) * 0.5f)
+        val offsetY = topLeft.y + cell * (0.75f + (i / 2) * 0.15f)
         drawCircle(color = Color(player.tokenColor), radius = cell * 0.12f, center = Offset(offsetX, offsetY))
+        drawCircle(
+            color = Color.Black,
+            radius = cell * 0.12f,
+            center = Offset(offsetX, offsetY),
+            style = Stroke(width = 1f),
+        )
+    }
+}
+
+private fun DrawScope.drawLabel(text: String, cx: Float, cy: Float, sizePx: Float, bold: Boolean = false) {
+    if (text.isEmpty()) return
+    drawIntoCanvas { canvas ->
+        val paint = Paint().apply {
+            color = android.graphics.Color.BLACK
+            textSize = sizePx
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+            if (bold) typeface = Typeface.DEFAULT_BOLD
+        }
+        canvas.nativeCanvas.drawText(text, cx, cy, paint)
     }
 }
 
@@ -81,6 +134,31 @@ private fun DrawScope.drawHouseMarkers(topLeft: Offset, cell: Float, level: Int)
         )
         x += pipSize + gap
     }
+}
+
+private fun spaceGlyph(space: Space): String = when (space) {
+    is GoSpace -> "START"
+    is JailSpace -> "WIEZ."
+    is GoToJailSpace -> "-> WIEZ."
+    is FreeParkingSpace -> "PARK."
+    is EventSpace -> "?"
+    is TaxSpace -> "$"
+    is TransitSpace -> "KOLEJ"
+    is UtilitySpace -> "USLUGA"
+    is PropertySpace -> ""
+}
+
+private fun spaceLabel(space: Space): String = when (space) {
+    is PropertySpace -> abbreviate(space.name)
+    is TransitSpace -> abbreviate(space.name)
+    is UtilitySpace -> abbreviate(space.name)
+    is TaxSpace -> "${space.amount}"
+    else -> ""
+}
+
+private fun abbreviate(name: String): String {
+    val lastWord = name.substringAfterLast(' ')
+    return lastWord.take(8)
 }
 
 private fun spaceColor(space: Space): Color = when (space) {

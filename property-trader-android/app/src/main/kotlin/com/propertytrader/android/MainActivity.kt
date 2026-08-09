@@ -12,6 +12,7 @@ import com.propertytrader.android.ui.Screen
 import com.propertytrader.android.ui.screens.BoardScreen
 import com.propertytrader.android.ui.screens.BuildScreen
 import com.propertytrader.android.ui.screens.GameOverScreen
+import com.propertytrader.android.ui.screens.RulesScreen
 import com.propertytrader.android.ui.screens.SetupScreen
 import com.propertytrader.android.ui.screens.TradeScreen
 import com.propertytrader.android.ui.theme.PropertyTraderTheme
@@ -33,7 +34,8 @@ fun AppRoot(viewModel: GameViewModel = viewModel()) {
 
     when (uiState.screen) {
         Screen.SETUP -> SetupScreen(
-            onStart = { names, roundLimit -> viewModel.startGame(names, roundLimit = roundLimit) },
+            onStart = { names, colors, roundLimit -> viewModel.startGame(names, colors, roundLimit = roundLimit) },
+            onOpenRules = viewModel::openRules,
         )
         Screen.BOARD -> uiState.gameState?.let { gameState ->
             BoardScreen(
@@ -47,8 +49,10 @@ fun AppRoot(viewModel: GameViewModel = viewModel()) {
                 onTradeResponse = viewModel::respondToTrade,
                 onOpenBuild = viewModel::openBuild,
                 onUseExtraRoll = viewModel::useExtraRoll,
+                onOpenRules = viewModel::openRules,
             )
         }
+        Screen.RULES -> RulesScreen(onBack = viewModel::closeRules)
         Screen.TRADE -> uiState.gameState?.let { gameState ->
             TradeScreen(
                 gameState = gameState,

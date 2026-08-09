@@ -13,8 +13,19 @@ app). Treat it as a separate product.
 ```
 property-trader-android/
 ├── core/   pure-Kotlin/JVM module: board, players, game state, turn engine. No Android dependency.
-└── app/    Android app: Jetpack Compose UI (setup, board, trade, build, game over).
+└── app/    Android app: Jetpack Compose UI (setup, board, trade, build, rules, game over).
 ```
+
+## Visuals
+
+The first CI-built APK was correctly functioning but visually bare (plain
+color rectangles, no labels). The board now draws each space's name, price,
+and a type glyph (START / WIEZ. / PARK. / KOLEJ / USLUGA / $ / ?); dice roll
+in an animated "cup" with real pip faces instead of plain text; a banner
+pops up over the board for a couple of seconds on every notable event (pass
+Go, rent paid, card drawn, jackpot, …); and Setup lets each player pick a
+token color (tap a swatch — picking one already taken swaps it with whoever
+had it). See `BoardCanvas.kt`, `DiceCup.kt`, `EventBanner.kt`.
 
 ## What's verified, what isn't
 
