@@ -28,7 +28,7 @@ export default function App() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <View style={styles.appBar}>
-        <Text style={styles.appTitle}>DJ Mixer</Text>
+        <Text style={styles.appTitle}>DJ Beton</Text>
       </View>
 
       {/*

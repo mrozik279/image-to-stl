@@ -1,4 +1,4 @@
-# DJ Mixer (dj-app)
+# DJ Beton (dj-app)
 
 Mobilna aplikacja (Expo / React Native / TypeScript) do miksowania dwóch
 utworów jak w podstawowym kontrolerze DJ-skim: biblioteka utworów, dwa decki,
