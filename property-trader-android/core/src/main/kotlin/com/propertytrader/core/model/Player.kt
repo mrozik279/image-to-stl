@@ -9,4 +9,7 @@ data class Player(
     val inJail: Boolean = false,
     val jailTurns: Int = 0,
     val bankrupt: Boolean = false,
+    val consecutiveDoubles: Int = 0,
+    val extraRollTokens: Int = 0,
+    val getOutOfJailFreeCards: Int = 0,
 )

@@ -14,4 +14,11 @@ sealed interface GameEvent {
     data class TradeProposed(val fromPlayerId: Int, val toPlayerId: Int) : GameEvent
     data class TradeAccepted(val fromPlayerId: Int, val toPlayerId: Int) : GameEvent
     data class TradeDeclined(val fromPlayerId: Int, val toPlayerId: Int) : GameEvent
+    data class HouseBuilt(val playerId: Int, val spaceIndex: Int, val newLevel: Int) : GameEvent
+    data class EventCardDrawn(val playerId: Int, val description: String) : GameEvent
+    data class FreeParkingJackpot(val playerId: Int, val amount: Int) : GameEvent
+    data class ExtraRollGranted(val playerId: Int) : GameEvent
+    data class ExtraRollUsed(val playerId: Int) : GameEvent
+    data class RolledAgain(val playerId: Int) : GameEvent
+    data class LeftJailWithCard(val playerId: Int) : GameEvent
 }

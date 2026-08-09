@@ -38,7 +38,8 @@ class GameEngineMovementTest {
 
     @Test
     fun `landing on an event space ends the turn with no purchase decision`() {
-        val engine = GameEngine(Dice(ScriptedRandom(0, 0))) // rolls (1, 1) = 2 -> index 2 (Event)
+        // (3, 4) = 7, non-double so the doubles-reroll bonus doesn't apply here, lands on index 7 (Event).
+        val engine = GameEngine(Dice(ScriptedRandom(2, 3)))
         val state = newGame()
 
         val (newState, _) = engine.rollAndMove(state)

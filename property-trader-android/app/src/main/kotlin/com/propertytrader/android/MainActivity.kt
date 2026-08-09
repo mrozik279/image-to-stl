@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.propertytrader.android.ui.GameViewModel
 import com.propertytrader.android.ui.Screen
 import com.propertytrader.android.ui.screens.BoardScreen
+import com.propertytrader.android.ui.screens.BuildScreen
 import com.propertytrader.android.ui.screens.GameOverScreen
 import com.propertytrader.android.ui.screens.SetupScreen
 import com.propertytrader.android.ui.screens.TradeScreen
@@ -44,6 +45,8 @@ fun AppRoot(viewModel: GameViewModel = viewModel()) {
                 onEndTurn = viewModel::endTurn,
                 onOpenTrade = viewModel::openTrade,
                 onTradeResponse = viewModel::respondToTrade,
+                onOpenBuild = viewModel::openBuild,
+                onUseExtraRoll = viewModel::useExtraRoll,
             )
         }
         Screen.TRADE -> uiState.gameState?.let { gameState ->
@@ -51,6 +54,13 @@ fun AppRoot(viewModel: GameViewModel = viewModel()) {
                 gameState = gameState,
                 onPropose = viewModel::proposeTrade,
                 onCancel = viewModel::cancelTrade,
+            )
+        }
+        Screen.BUILD -> uiState.gameState?.let { gameState ->
+            BuildScreen(
+                gameState = gameState,
+                onBuild = viewModel::buildHouse,
+                onCancel = viewModel::closeBuild,
             )
         }
         Screen.GAME_OVER -> uiState.gameState?.let { gameState ->

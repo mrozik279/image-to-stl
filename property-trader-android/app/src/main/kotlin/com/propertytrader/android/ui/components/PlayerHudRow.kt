@@ -36,6 +36,15 @@ fun PlayerHudRow(gameState: GameState) {
                     Text(player.name + nameSuffix, style = MaterialTheme.typography.titleSmall)
                     Text("Gotowka: ${player.cash}", style = MaterialTheme.typography.bodySmall)
                     Text("Nieruchomosci: $propertyCount", style = MaterialTheme.typography.bodySmall)
+                    if (player.extraRollTokens > 0) {
+                        Text("Dodatkowe rzuty: ${player.extraRollTokens}", style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (player.getOutOfJailFreeCards > 0) {
+                        Text(
+                            "Karty \"Wyjscie z wiezienia\": ${player.getOutOfJailFreeCards}",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
             }
         }

@@ -26,6 +26,8 @@ data class PropertySpace(
     val price: Int,
     val baseRent: Int,
     val fullGroupRentMultiplier: Int = 2,
+    val houseCost: Int,
+    val rentWithHouses: List<Int>, // size 5: 1, 2, 3, 4 houses, then a hotel
 ) : Space
 
 data class TransitSpace(

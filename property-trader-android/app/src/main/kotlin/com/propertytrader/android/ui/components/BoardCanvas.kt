@@ -46,11 +46,40 @@ private fun DrawScope.drawSpace(space: Space, gameState: GameState, topLeft: Off
         drawRect(color = ownerColor, topLeft = topLeft, size = cellSize, style = Stroke(width = 4f))
     }
 
+    val houseLevel = gameState.houses[space.index] ?: 0
+    if (houseLevel > 0) {
+        drawHouseMarkers(topLeft, cell, houseLevel)
+    }
+
     val playersHere = gameState.players.filter { it.position == space.index && !it.bankrupt }
     playersHere.forEachIndexed { i, player ->
         val offsetX = topLeft.x + cell * (0.25f + (i % 2) * 0.5f)
         val offsetY = topLeft.y + cell * (0.25f + (i / 2) * 0.5f)
         drawCircle(color = Color(player.tokenColor), radius = cell * 0.12f, center = Offset(offsetX, offsetY))
+    }
+}
+
+private fun DrawScope.drawHouseMarkers(topLeft: Offset, cell: Float, level: Int) {
+    if (level >= 5) {
+        val hotelSize = cell * 0.3f
+        drawRect(
+            color = Color(0xFFD32F2F),
+            topLeft = Offset(topLeft.x + (cell - hotelSize) / 2, topLeft.y + cell * 0.05f),
+            size = Size(hotelSize, hotelSize),
+        )
+        return
+    }
+    val pipSize = cell * 0.14f
+    val gap = cell * 0.04f
+    val totalWidth = level * pipSize + (level - 1) * gap
+    var x = topLeft.x + (cell - totalWidth) / 2
+    repeat(level) {
+        drawRect(
+            color = Color(0xFF2E7D32),
+            topLeft = Offset(x, topLeft.y + cell * 0.05f),
+            size = Size(pipSize, pipSize),
+        )
+        x += pipSize + gap
     }
 }
 

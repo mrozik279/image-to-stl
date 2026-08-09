@@ -1,5 +1,6 @@
 package com.propertytrader.android.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,10 +36,16 @@ fun BoardScreen(
     onEndTurn: () -> Unit,
     onOpenTrade: () -> Unit,
     onTradeResponse: (Boolean) -> Unit,
+    onOpenBuild: () -> Unit,
+    onUseExtraRoll: () -> Unit,
 ) {
-    val canOpenTrade = gameState.pendingTrade == null &&
-        (gameState.phase == TurnPhase.AWAITING_ROLL || gameState.phase == TurnPhase.TURN_READY_TO_END) &&
-        gameState.players.count { !it.bankrupt } >= 2
+    val noBlockingDecision = gameState.pendingTrade == null
+    val canActNow = noBlockingDecision &&
+        (gameState.phase == TurnPhase.AWAITING_ROLL || gameState.phase == TurnPhase.TURN_READY_TO_END)
+    val canOpenTrade = canActNow && gameState.players.count { !it.bankrupt } >= 2
+    val canUseExtraRoll = noBlockingDecision &&
+        gameState.phase == TurnPhase.TURN_READY_TO_END &&
+        gameState.currentPlayer.extraRollTokens > 0
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -60,8 +68,17 @@ fun BoardScreen(
             "Tura: ${gameState.currentPlayer.name} (runda ${gameState.roundNumber})",
             style = MaterialTheme.typography.titleMedium,
         )
+        Text(
+            "Pula Darmowego Parkingu: ${gameState.freeParkingPot}",
+            style = MaterialTheme.typography.bodySmall,
+        )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .padding(vertical = 8.dp)
+                .horizontalScroll(rememberScrollState()),
+        ) {
             Button(
                 onClick = onRollDice,
                 enabled = gameState.phase == TurnPhase.AWAITING_ROLL && gameState.pendingTrade == null,
@@ -76,6 +93,12 @@ fun BoardScreen(
             }
             Button(onClick = onOpenTrade, enabled = canOpenTrade) {
                 Text("Handel")
+            }
+            Button(onClick = onOpenBuild, enabled = canActNow) {
+                Text("Buduj")
+            }
+            Button(onClick = onUseExtraRoll, enabled = canUseExtraRoll) {
+                Text("Dodatkowy rzut (${gameState.currentPlayer.extraRollTokens})")
             }
         }
 

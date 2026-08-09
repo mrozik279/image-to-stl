@@ -1,6 +1,7 @@
 package com.propertytrader.android.ui.components
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
@@ -77,12 +78,24 @@ fun DecisionDialogs(
         }
 
         TurnPhase.AWAITING_JAIL_DECISION -> {
+            val hasCard = gameState.currentPlayer.getOutOfJailFreeCards > 0
             AlertDialog(
                 onDismissRequest = {},
                 title = { Text("Jestes w wiezieniu") },
-                text = { Text("Zaplac kaucje (${GameEngine.BAIL_AMOUNT}) albo sprobuj wyrzucic dublet.") },
+                text = {
+                    Text(
+                        "Zaplac kaucje (${GameEngine.BAIL_AMOUNT})" +
+                            (if (hasCard) ", uzyj karty \"Wyjscie z wiezienia\"" else "") +
+                            " albo sprobuj wyrzucic dublet.",
+                    )
+                },
                 confirmButton = {
-                    TextButton(onClick = { onJailDecision(JailAction.PAY_BAIL) }) { Text("Zaplac kaucje") }
+                    Row {
+                        if (hasCard) {
+                            TextButton(onClick = { onJailDecision(JailAction.USE_CARD) }) { Text("Uzyj karty") }
+                        }
+                        TextButton(onClick = { onJailDecision(JailAction.PAY_BAIL) }) { Text("Zaplac kaucje") }
+                    }
                 },
                 dismissButton = {
                     TextButton(onClick = { onJailDecision(JailAction.TRY_ROLL) }) { Text("Rzuc koscmi") }

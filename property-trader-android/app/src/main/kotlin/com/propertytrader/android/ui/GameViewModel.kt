@@ -2,6 +2,7 @@ package com.propertytrader.android.ui
 
 import androidx.lifecycle.ViewModel
 import com.propertytrader.core.board.BoardFactory
+import com.propertytrader.core.cards.EventDeck
 import com.propertytrader.core.engine.GameEngine
 import com.propertytrader.core.engine.GameEvent
 import com.propertytrader.core.engine.JailAction
@@ -14,7 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-enum class Screen { SETUP, BOARD, TRADE, GAME_OVER }
+enum class Screen { SETUP, BOARD, TRADE, BUILD, GAME_OVER }
 
 data class GameUiState(
     val screen: Screen = Screen.SETUP,
@@ -37,6 +38,7 @@ class GameViewModel : ViewModel() {
             currentPlayerIndex = 0,
             phase = TurnPhase.AWAITING_ROLL,
             roundLimit = roundLimit,
+            eventDeck = EventDeck.classicDeck().shuffled(),
         )
         _uiState.value = GameUiState(
             screen = Screen.BOARD,
@@ -78,6 +80,18 @@ class GameViewModel : ViewModel() {
     }
 
     fun respondToTrade(accept: Boolean) = applyAction { engine.respondToTrade(it, accept) }
+
+    fun openBuild() {
+        _uiState.update { it.copy(screen = Screen.BUILD) }
+    }
+
+    fun closeBuild() {
+        _uiState.update { it.copy(screen = Screen.BOARD) }
+    }
+
+    fun buildHouse(spaceIndex: Int) = applyAction { engine.buildHouse(it, spaceIndex) }
+
+    fun useExtraRoll() = applyAction { engine.useExtraRollToken(it) }
 
     private fun applyAction(action: (GameState) -> Pair<GameState, List<GameEvent>>) {
         val current = _uiState.value.gameState ?: return
@@ -124,6 +138,17 @@ class GameViewModel : ViewModel() {
                 "${playerName(event.toPlayerId)} akceptuje wymiane z ${playerName(event.fromPlayerId)}."
             is GameEvent.TradeDeclined ->
                 "${playerName(event.toPlayerId)} odrzuca wymiane z ${playerName(event.fromPlayerId)}."
+            is GameEvent.HouseBuilt -> {
+                val label = if (event.newLevel >= 5) "hotel" else "dom (poziom ${event.newLevel})"
+                "${playerName(event.playerId)} buduje $label na ${spaceName(event.spaceIndex)}."
+            }
+            is GameEvent.EventCardDrawn -> "${playerName(event.playerId)} losuje karte: ${event.description}"
+            is GameEvent.FreeParkingJackpot ->
+                "${playerName(event.playerId)} zgarnia pule Darmowego Parkingu: ${event.amount}."
+            is GameEvent.ExtraRollGranted -> "${playerName(event.playerId)} zdobywa dodatkowy rzut."
+            is GameEvent.ExtraRollUsed -> "${playerName(event.playerId)} wykorzystuje dodatkowy rzut."
+            is GameEvent.RolledAgain -> "${playerName(event.playerId)} wyrzucil dublet i rzuca ponownie."
+            is GameEvent.LeftJailWithCard -> "${playerName(event.playerId)} uzywa karty i wychodzi z wiezienia."
         }
     }
 

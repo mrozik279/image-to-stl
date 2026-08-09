@@ -10,6 +10,7 @@ import com.propertytrader.core.board.Space
 import com.propertytrader.core.board.TaxSpace
 import com.propertytrader.core.board.TransitSpace
 import com.propertytrader.core.board.UtilitySpace
+import com.propertytrader.core.cards.EventCardEffect
 import com.propertytrader.core.model.GameState
 import com.propertytrader.core.model.Player
 import com.propertytrader.core.model.TradeOffer
@@ -22,10 +23,29 @@ class GameEngine(private val dice: Dice = Dice()) {
         val player = state.currentPlayer
         val (a, b) = dice.roll()
         val events = mutableListOf<GameEvent>(GameEvent.DiceRolled(a, b))
-        val stateWithDice = state.copy(lastDice = a to b)
+        val isDouble = a == b
+        val newConsecutiveDoubles = if (isDouble) player.consecutiveDoubles + 1 else 0
+        val stateWithDice = updatePlayer(state.copy(lastDice = a to b), player.id) {
+            it.copy(consecutiveDoubles = newConsecutiveDoubles)
+        }
+
+        if (isDouble && newConsecutiveDoubles >= MAX_CONSECUTIVE_DOUBLES) {
+            val resetState = updatePlayer(stateWithDice, player.id) { it.copy(consecutiveDoubles = 0) }
+            val (jailedState, jailEvents) = sendToJail(resetState, player.id)
+            return jailedState to (events + jailEvents)
+        }
+
         val (movedState, moveEvents) = moveAndResolveLanding(stateWithDice, player.id, a + b)
         events += moveEvents
-        return movedState to events
+
+        val movedPlayer = movedState.players.first { it.id == player.id }
+        val grantsReroll = isDouble && movedState.phase == TurnPhase.TURN_READY_TO_END && !movedPlayer.inJail
+        return if (grantsReroll) {
+            events += GameEvent.RolledAgain(player.id)
+            movedState.copy(phase = TurnPhase.AWAITING_ROLL) to events
+        } else {
+            movedState to events
+        }
     }
 
     fun decidePurchase(state: GameState, buy: Boolean): Pair<GameState, List<GameEvent>> {
@@ -47,36 +67,64 @@ class GameEngine(private val dice: Dice = Dice()) {
         return when (action) {
             JailAction.PAY_BAIL -> payBailAndStay(state, player)
             JailAction.TRY_ROLL -> tryRollForJail(state, player)
+            JailAction.USE_CARD -> useCardAndStay(state, player)
         }
+    }
+
+    fun buildHouse(state: GameState, spaceIndex: Int): Pair<GameState, List<GameEvent>> {
+        val player = state.currentPlayer
+        val space = state.board.getOrNull(spaceIndex) as? PropertySpace ?: return state to emptyList()
+        if (state.ownership[spaceIndex] != player.id) return state to emptyList()
+        val groupSpaces = state.board.filterIsInstance<PropertySpace>().filter { it.group == space.group }
+        val ownsFullGroup = groupSpaces.all { state.ownership[it.index] == player.id }
+        if (!ownsFullGroup) return state to emptyList()
+        val currentLevel = state.houses[spaceIndex] ?: 0
+        if (currentLevel >= MAX_HOUSE_LEVEL) return state to emptyList()
+        if (player.cash < space.houseCost) return state to emptyList()
+
+        val newState = updatePlayer(state, player.id) { it.copy(cash = it.cash - space.houseCost) }
+            .copy(houses = state.houses + (spaceIndex to currentLevel + 1))
+        return newState to listOf(GameEvent.HouseBuilt(player.id, spaceIndex, currentLevel + 1))
+    }
+
+    fun useExtraRollToken(state: GameState): Pair<GameState, List<GameEvent>> {
+        if (state.phase != TurnPhase.TURN_READY_TO_END) return state to emptyList()
+        val player = state.currentPlayer
+        if (player.extraRollTokens <= 0) return state to emptyList()
+        val newState = updatePlayer(state, player.id) { it.copy(extraRollTokens = it.extraRollTokens - 1) }
+            .copy(phase = TurnPhase.AWAITING_ROLL)
+        return newState to listOf(GameEvent.ExtraRollUsed(player.id))
     }
 
     fun endTurn(state: GameState): GameState {
         if (state.phase == TurnPhase.GAME_OVER) return state
-        val activePlayers = state.players.filterNot { it.bankrupt }
+        val resetState = updatePlayer(state, state.currentPlayer.id) { it.copy(consecutiveDoubles = 0) }
+
+        val activePlayers = resetState.players.filterNot { it.bankrupt }
         if (activePlayers.size <= 1) {
-            val winner = activePlayers.firstOrNull() ?: state.players.first()
-            return state.copy(phase = TurnPhase.GAME_OVER, winnerId = winner.id)
+            val winner = activePlayers.firstOrNull() ?: resetState.players.first()
+            return resetState.copy(phase = TurnPhase.GAME_OVER, winnerId = winner.id)
         }
 
-        var nextIndex = state.currentPlayerIndex
-        var roundNumber = state.roundNumber
+        var nextIndex = resetState.currentPlayerIndex
+        var roundNumber = resetState.roundNumber
         var attempts = 0
         do {
             val prev = nextIndex
-            nextIndex = (nextIndex + 1) % state.players.size
+            nextIndex = (nextIndex + 1) % resetState.players.size
             if (nextIndex <= prev) roundNumber++
             attempts++
-        } while (state.players[nextIndex].bankrupt && attempts <= state.players.size)
+        } while (resetState.players[nextIndex].bankrupt && attempts <= resetState.players.size)
 
-        val roundLimit = state.roundLimit
+        val roundLimit = resetState.roundLimit
         if (roundLimit != null && roundNumber > roundLimit) {
-            val winner = activePlayers.maxWithOrNull(compareBy<Player> { netWorth(state, it) }.thenBy { -it.id })!!
-            return state.copy(phase = TurnPhase.GAME_OVER, winnerId = winner.id, roundNumber = roundNumber)
+            val winner = activePlayers.maxWithOrNull(compareBy<Player> { netWorth(resetState, it) }.thenBy { -it.id })!!
+            return resetState.copy(phase = TurnPhase.GAME_OVER, winnerId = winner.id, roundNumber = roundNumber)
         }
 
-        val nextPlayer = state.players[nextIndex]
+        val nextPlayer = resetState.players[nextIndex]
         val nextPhase = if (nextPlayer.inJail) TurnPhase.AWAITING_JAIL_DECISION else TurnPhase.AWAITING_ROLL
-        return state.copy(
+        return resetState.copy(
             currentPlayerIndex = nextIndex,
             roundNumber = roundNumber,
             phase = nextPhase,
@@ -127,6 +175,14 @@ class GameEngine(private val dice: Dice = Dice()) {
         val releasedState = updatePlayer(chargedState, player.id) { it.copy(inJail = false, jailTurns = 0) }
             .copy(phase = TurnPhase.AWAITING_ROLL)
         return releasedState to (chargeEvents + GameEvent.LeftJail(player.id, paidBail = true))
+    }
+
+    private fun useCardAndStay(state: GameState, player: Player): Pair<GameState, List<GameEvent>> {
+        if (player.getOutOfJailFreeCards <= 0) return state to emptyList()
+        val releasedState = updatePlayer(state, player.id) {
+            it.copy(inJail = false, jailTurns = 0, getOutOfJailFreeCards = it.getOutOfJailFreeCards - 1)
+        }.copy(phase = TurnPhase.AWAITING_ROLL)
+        return releasedState to listOf(GameEvent.LeftJailWithCard(player.id))
     }
 
     private fun tryRollForJail(state: GameState, player: Player): Pair<GameState, List<GameEvent>> {
@@ -182,8 +238,12 @@ class GameEngine(private val dice: Dice = Dice()) {
     private fun resolveLanding(state: GameState, playerId: Int): Pair<GameState, List<GameEvent>> {
         val player = state.players.first { it.id == playerId }
         return when (val space = state.board[player.position]) {
-            is GoSpace, is JailSpace, is FreeParkingSpace, is EventSpace ->
+            is GoSpace, is JailSpace ->
                 state.copy(phase = TurnPhase.TURN_READY_TO_END) to emptyList()
+
+            is FreeParkingSpace -> collectFreeParkingPot(state, playerId)
+
+            is EventSpace -> drawEventCard(state, playerId)
 
             is GoToJailSpace -> sendToJail(state, playerId)
 
@@ -200,6 +260,67 @@ class GameEngine(private val dice: Dice = Dice()) {
             is PropertySpace -> resolveOwnableLanding(state, playerId, space.index, space.price)
             is TransitSpace -> resolveOwnableLanding(state, playerId, space.index, space.price)
             is UtilitySpace -> resolveOwnableLanding(state, playerId, space.index, space.price)
+        }
+    }
+
+    private fun collectFreeParkingPot(state: GameState, playerId: Int): Pair<GameState, List<GameEvent>> {
+        val pot = state.freeParkingPot
+        if (pot <= 0) {
+            return state.copy(phase = TurnPhase.TURN_READY_TO_END) to emptyList()
+        }
+        val newState = updatePlayer(state, playerId) { it.copy(cash = it.cash + pot) }
+            .copy(freeParkingPot = 0, phase = TurnPhase.TURN_READY_TO_END)
+        return newState to listOf(GameEvent.FreeParkingJackpot(playerId, pot))
+    }
+
+    private fun drawEventCard(state: GameState, playerId: Int): Pair<GameState, List<GameEvent>> {
+        if (state.eventDeck.isEmpty()) return state.copy(phase = TurnPhase.TURN_READY_TO_END) to emptyList()
+        val card = state.eventDeck[state.eventDeckPosition % state.eventDeck.size]
+        val stateWithCard = state.copy(eventDeckPosition = state.eventDeckPosition + 1, lastDrawnCard = card)
+        val events = mutableListOf<GameEvent>(GameEvent.EventCardDrawn(playerId, card.description))
+
+        return when (val effect = card.effect) {
+            is EventCardEffect.CollectMoney -> {
+                val newState = updatePlayer(stateWithCard, playerId) { it.copy(cash = it.cash + effect.amount) }
+                    .copy(phase = TurnPhase.TURN_READY_TO_END)
+                newState to events
+            }
+
+            is EventCardEffect.PayMoney -> {
+                val (chargedState, chargeEvents) = chargePlayer(stateWithCard, playerId, effect.amount, creditorId = null)
+                events += chargeEvents
+                if (chargedState.players.first { it.id == playerId }.bankrupt) {
+                    checkGameOver(chargedState, events)
+                } else {
+                    chargedState.copy(phase = TurnPhase.TURN_READY_TO_END) to events
+                }
+            }
+
+            is EventCardEffect.MoveTo -> {
+                val player = stateWithCard.players.first { it.id == playerId }
+                val boardSize = stateWithCard.board.size
+                val spacesToMove = ((effect.spaceIndex - player.position) + boardSize) % boardSize
+                val (movedState, moveEvents) = moveAndResolveLanding(stateWithCard, playerId, spacesToMove)
+                movedState to (events + moveEvents)
+            }
+
+            EventCardEffect.GoToJail -> {
+                val (jailedState, jailEvents) = sendToJail(stateWithCard, playerId)
+                jailedState to (events + jailEvents)
+            }
+
+            EventCardEffect.GetOutOfJailFree -> {
+                val newState = updatePlayer(stateWithCard, playerId) {
+                    it.copy(getOutOfJailFreeCards = it.getOutOfJailFreeCards + 1)
+                }.copy(phase = TurnPhase.TURN_READY_TO_END)
+                newState to events
+            }
+
+            EventCardEffect.ExtraRoll -> {
+                val newState = updatePlayer(stateWithCard, playerId) { it.copy(extraRollTokens = it.extraRollTokens + 1) }
+                    .copy(phase = TurnPhase.TURN_READY_TO_END)
+                newState to (events + GameEvent.ExtraRollGranted(playerId))
+            }
         }
     }
 
@@ -234,9 +355,14 @@ class GameEngine(private val dice: Dice = Dice()) {
     private fun calculateRent(state: GameState, spaceIndex: Int, ownerId: Int): Int =
         when (val space = state.board[spaceIndex]) {
             is PropertySpace -> {
-                val groupSpaces = state.board.filterIsInstance<PropertySpace>().filter { it.group == space.group }
-                val ownsFullGroup = groupSpaces.all { state.ownership[it.index] == ownerId }
-                if (ownsFullGroup) space.baseRent * space.fullGroupRentMultiplier else space.baseRent
+                val houseLevel = state.houses[spaceIndex] ?: 0
+                if (houseLevel > 0) {
+                    space.rentWithHouses[(houseLevel - 1).coerceIn(0, space.rentWithHouses.lastIndex)]
+                } else {
+                    val groupSpaces = state.board.filterIsInstance<PropertySpace>().filter { it.group == space.group }
+                    val ownsFullGroup = groupSpaces.all { state.ownership[it.index] == ownerId }
+                    if (ownsFullGroup) space.baseRent * space.fullGroupRentMultiplier else space.baseRent
+                }
             }
             is TransitSpace -> {
                 val ownedCount = state.board.filterIsInstance<TransitSpace>().count { state.ownership[it.index] == ownerId }
@@ -269,8 +395,10 @@ class GameEngine(private val dice: Dice = Dice()) {
             handleBankruptcy(state, playerId, creditorId)
         } else {
             var newState = updatePlayer(state, playerId) { it.copy(cash = it.cash - amount) }
-            if (creditorId != null) {
-                newState = updatePlayer(newState, creditorId) { it.copy(cash = it.cash + amount) }
+            newState = if (creditorId != null) {
+                updatePlayer(newState, creditorId) { it.copy(cash = it.cash + amount) }
+            } else {
+                newState.copy(freeParkingPot = newState.freeParkingPot + amount)
             }
             newState to emptyList()
         }
@@ -284,8 +412,10 @@ class GameEngine(private val dice: Dice = Dice()) {
                 else -> null
             }
         }.toMap()
+        val debtorSpaces = state.ownership.filterValues { it == debtorId }.keys
+        val newHouses = state.houses.filterKeys { it !in debtorSpaces }
         val newState = updatePlayer(state, debtorId) { it.copy(bankrupt = true, cash = 0) }
-            .copy(ownership = newOwnership)
+            .copy(ownership = newOwnership, houses = newHouses)
         return newState to listOf(GameEvent.PlayerBankrupt(debtorId, creditorId))
     }
 
@@ -302,7 +432,15 @@ class GameEngine(private val dice: Dice = Dice()) {
 
     private fun netWorth(state: GameState, player: Player): Int {
         val propertyValue = state.ownership.filterValues { it == player.id }.keys.sumOf { spacePrice(state.board[it]) }
-        return player.cash + propertyValue
+        val houseValue = state.houses.entries.sumOf { (spaceIndex, level) ->
+            if (state.ownership[spaceIndex] == player.id) {
+                val space = state.board[spaceIndex] as? PropertySpace
+                (space?.houseCost ?: 0) * level
+            } else {
+                0
+            }
+        }
+        return player.cash + propertyValue + houseValue
     }
 
     private fun spacePrice(space: Space): Int = when (space) {
@@ -319,5 +457,7 @@ class GameEngine(private val dice: Dice = Dice()) {
         const val PASS_GO_BONUS = 200
         const val BAIL_AMOUNT = 50
         const val MAX_JAIL_TURNS = 3
+        const val MAX_CONSECUTIVE_DOUBLES = 3
+        const val MAX_HOUSE_LEVEL = 5
     }
 }

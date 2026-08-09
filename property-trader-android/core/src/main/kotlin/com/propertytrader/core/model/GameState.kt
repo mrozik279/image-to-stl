@@ -1,6 +1,7 @@
 package com.propertytrader.core.model
 
 import com.propertytrader.core.board.Space
+import com.propertytrader.core.cards.EventCard
 
 enum class TurnPhase {
     AWAITING_ROLL,
@@ -21,6 +22,11 @@ data class GameState(
     val roundLimit: Int? = null,
     val winnerId: Int? = null,
     val pendingTrade: TradeOffer? = null,
+    val houses: Map<Int, Int> = emptyMap(),
+    val freeParkingPot: Int = 0,
+    val eventDeck: List<EventCard> = emptyList(),
+    val eventDeckPosition: Int = 0,
+    val lastDrawnCard: EventCard? = null,
 ) {
     val currentPlayer: Player get() = players[currentPlayerIndex]
 }

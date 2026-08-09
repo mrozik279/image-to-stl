@@ -84,6 +84,34 @@ class GameEngineJailTest {
         assertTrue(events.any { it is GameEvent.LeftJail })
     }
 
+    @Test
+    fun `using a get-out-of-jail-free card releases the player without paying`() {
+        val engine = GameEngine()
+        val state = jailedState().let {
+            it.copy(players = it.players.map { p -> if (p.id == 0) p.copy(getOutOfJailFreeCards = 1) else p })
+        }
+
+        val (newState, events) = engine.decideJail(state, JailAction.USE_CARD)
+
+        val player = newState.players.first { it.id == 0 }
+        assertFalse(player.inJail)
+        assertEquals(1500, player.cash) // no cost
+        assertEquals(0, player.getOutOfJailFreeCards)
+        assertEquals(TurnPhase.AWAITING_ROLL, newState.phase)
+        assertTrue(events.single() is GameEvent.LeftJailWithCard)
+    }
+
+    @Test
+    fun `using a get-out-of-jail-free card with none available is a no-op`() {
+        val engine = GameEngine()
+        val state = jailedState()
+
+        val (newState, events) = engine.decideJail(state, JailAction.USE_CARD)
+
+        assertTrue(newState.players.first { it.id == 0 }.inJail)
+        assertTrue(events.isEmpty())
+    }
+
     private fun jailedState(jailTurns: Int = 0) = newGame().let {
         it.copy(
             players = it.players.map { p ->

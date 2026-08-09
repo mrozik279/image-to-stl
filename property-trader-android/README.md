@@ -13,16 +13,18 @@ app). Treat it as a separate product.
 ```
 property-trader-android/
 ├── core/   pure-Kotlin/JVM module: board, players, game state, turn engine. No Android dependency.
-└── app/    Android app: Jetpack Compose UI (setup, board, trade, game over).
+└── app/    Android app: Jetpack Compose UI (setup, board, trade, build, game over).
 ```
 
 ## What's verified, what isn't
 
-**`:core` is unit-tested and all 39 tests pass** (board layout, dice,
+**`:core` is unit-tested and all 62 tests pass** (board layout, dice,
 movement/Go bonus, purchase/rent — including full-color-group doubling,
-station and utility rent scaling — jail (bail, doubles, forced 3rd-attempt
-release), bankruptcy, both game-over conditions, and player-to-player
-trading). Verified in this session with plain Gradle + a JDK.
+house/hotel rent scaling, station and utility rent scaling — jail (bail,
+doubles, forced 3rd-attempt release, get-out-of-jail-free cards),
+bankruptcy, both game-over conditions, player-to-player trading, house/hotel
+building, the Event card deck, and the doubles/Free-Parking/extra-roll bonus
+mechanics). Verified in this session with plain Gradle + a JDK.
 See `core/src/test/kotlin/`.
 
 **`:app` (the Compose UI) has not been compiled.** This sandbox's egress
@@ -45,34 +47,58 @@ treat it as **unverified** until built in Android Studio.
    ./gradlew :app:assembleDebug  # build the APK
    ```
 
-## Rules implemented (v0)
+## Rules implemented
 
 - 40-space board, own theme (streets, 4 train stations, 2 utilities, 2 tax
-  spaces, 6 "Event" placeholder spaces), 8 color groups.
+  spaces, 6 Event spaces), 8 color groups.
 - Roll two dice, move, pass-Go bonus.
 - Landing on an unowned property/station/utility offers a buy/pass choice.
-- Landing on a rival's property charges rent automatically (double rent for
-  a complete color group; station rent scales with stations owned;
-  utility rent = dice sum × 4 or × 10 depending on how many are owned).
-- Fixed-amount tax spaces.
-- "Go to Jail" space, and in jail: pay bail or try for doubles (forced bail
-  + move after the 3rd failed attempt).
-- Bankruptcy: no partial payment in v0 — an eliminated player's properties
-  go to the creditor (private debt) or back to the bank (tax/bail debt).
+- Landing on a rival's property charges rent automatically: base rent, or
+  double for a complete unimproved color group, or the house/hotel rent tier
+  once houses are built; station rent scales with stations owned; utility
+  rent = dice sum × 4 or × 10 depending on how many are owned.
+- Fixed-amount tax spaces — the payment doesn't vanish, it feeds the Free
+  Parking pot (see below).
+- "Go to Jail" space, and in jail: pay bail, try for doubles (forced bail +
+  move after the 3rd failed attempt), or spend a "get out of jail free" card
+  if you're holding one.
+- Bankruptcy: no partial payment — an eliminated player's properties (and
+  any houses on them) go to the creditor (private debt) or back to the bank
+  (tax/bail/card debt).
 - Game ends when only one player remains, or (optional) at a configurable
-  round limit — highest net worth (cash + property price) wins, ties broken
-  by lowest player id.
-- Player-to-player trading: from the board screen (when no other decision
-  is pending), the current player opens the "Handel" screen, picks a
-  counterpart, and builds a two-sided offer of properties + cash. Proposing
-  it hands control to a modal accept/decline dialog (pass the phone) for the
-  counterpart; accepting swaps everything atomically, declining or an offer
-  that's gone stale (e.g. a property changed hands since it was proposed)
-  is a no-op. See `GameEngine.proposeTrade` / `respondToTrade`.
+  round limit — highest net worth (cash + property and house/hotel value)
+  wins, ties broken by lowest player id.
+- **Trading:** from the board screen (when no other decision is pending),
+  the current player opens the "Handel" screen, picks a counterpart, and
+  builds a two-sided offer of properties + cash. Proposing it hands control
+  to a modal accept/decline dialog (pass the phone) for the counterpart;
+  accepting swaps everything atomically, declining or an offer that's gone
+  stale (e.g. a property changed hands since it was proposed) is a no-op.
+  See `GameEngine.proposeTrade` / `respondToTrade`.
+- **Houses & hotels:** once a player owns every property in a color group,
+  the "Buduj" screen lets them build up to 4 houses and then a hotel on each
+  property in that group, at a per-group cost (50/100/150/200 for groups
+  A–B/C–D/E–F/G–H). Each level has its own rent, well above the unimproved
+  (even full-group) rate. No even-building rule and no bank house
+  shortage in this MVP — see `GameEngine.buildHouse`.
+- **Event cards ("Szansa"):** landing on an Event space draws the next card
+  from a shuffled 10-card deck (collect/pay money, advance to Go, go to
+  jail, get a "get out of jail free" card, or grant an extra-roll token) and
+  applies it immediately. See `core/cards/EventCard.kt` and
+  `GameEngine.drawEventCard`.
+- **Bonus mechanics:** rolling doubles grants another roll immediately
+  (three in a row sends you straight to jail without moving — the classic
+  "speeding" rule); the Free Parking space pays out whatever has
+  accumulated in the pot from tax/bail/card payments and resets it; an
+  extra-roll token (from an Event card) can be spent from the "Dodatkowy
+  rzut" button to roll again instead of ending your turn. See
+  `GameEngine.rollAndMove` / `useExtraRollToken` and
+  `GameState.freeParkingPot`.
 
-## Deliberately out of scope for v0
+## Deliberately out of scope
 
-Houses/hotels, Chance/Community-Chest style cards (the six "Event" spaces
-are placeholders with no effect yet), auctions when a purchase is declined,
-partial payment/mortgaging under bankruptcy, save/resume, and any
+Auctions when a purchase is declined, partial payment/mortgaging under
+bankruptcy, an even-building rule or finite bank house/hotel supply,
+trading a property that already has houses on it (allowed, but the houses
+just carry over to the new owner unchanged), save/resume, and any
 online/networked multiplayer.
