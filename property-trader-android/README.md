@@ -57,7 +57,10 @@ the "Run workflow" button under the Actions tab. On success it publishes
 `app-debug.apk` to a rolling GitHub Release tagged `property-trader-debug` —
 open that release on the repo (works fine from a phone browser or the
 GitHub app) and download the APK directly; Android will prompt to allow
-installing from that source the first time.
+installing from that source the first time. Every build is signed with the
+same checked-in `app/debug.keystore` (fixed alias/passwords, debug-only,
+never used for anything release-signed), so installing a newer APK over an
+older one updates it in place instead of demanding an uninstall first.
 
 **Locally, with the Android SDK and JDK 17 installed:**
 ```bash

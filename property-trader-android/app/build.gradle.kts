@@ -12,8 +12,28 @@ android {
         applicationId = "com.propertytrader.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
+    }
+
+    signingConfigs {
+        // Fixed, checked-in debug keystore so every build (CI or local) is signed with the
+        // same key. Without this, each CI run gets its own auto-generated debug keystore,
+        // and Android refuses to install a new build over an older one signed differently
+        // (it demands an uninstall first, losing local game state). Debug-only, never used
+        // for a release/Play Store build, so committing it is the standard, safe practice.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
 
     buildFeatures {
