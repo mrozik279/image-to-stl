@@ -1,0 +1,16 @@
+# Vendored upstream clone (openscad/openscad-playground) + its own build
+# output/deps. Fully reproducible from the public repo + patches/, see
+# android/README.md. Never commit this wholesale (node_modules alone is
+# hundreds of MB, and it's a nested git repo).
+openscad-playground-apk/src-playground/
+
+# Puppeteer test harness deps.
+openscad-playground-apk/puppeteer-test/node_modules/
+openscad-playground-apk/puppeteer-test/package-lock.json
+
+# APK build output / generated assets / signing key / final artifact.
+openscad-playground-apk/app/build/
+openscad-playground-apk/app/assets/www/
+openscad-playground-apk/app/debug.keystore
+openscad-playground-apk/app/*.apk
+openscad-playground-apk/app/*.apk.idsig

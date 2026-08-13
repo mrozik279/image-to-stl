@@ -1,0 +1,33 @@
+diff --git a/src/components/EditorPanel.tsx b/src/components/EditorPanel.tsx
+index 61cfd8e..2709e8a 100644
+--- a/src/components/EditorPanel.tsx
++++ b/src/components/EditorPanel.tsx
+@@ -21,6 +21,12 @@ const isMonacoSupported = (() => {
+   return !(iosWk || android);
+ })();
+ 
++// Force Monaco to load from our locally bundled copy instead of the
++// jsdelivr CDN default, so the app works fully offline. This must run
++// unconditionally (not gated by isMonacoSupported) because
++// registerOpenSCADLanguage() also calls loader.init() on all platforms.
++loader.config({ paths: { vs: './vs' } });
++
+ let monacoInstance: Monaco | null = null;
+ if (isMonacoSupported) {
+   loader.init().then(mi => monacoInstance = mi);
+diff --git a/webpack.config.js b/webpack.config.js
+index 5d68f2d..18041f8 100644
+--- a/webpack.config.js
++++ b/webpack.config.js
+@@ -108,6 +108,11 @@ const config = [
+             to: path.resolve(__dirname, 'dist/fonts'),
+             toType: 'dir',
+           },
++          {
++            from: path.resolve(__dirname, 'node_modules/monaco-editor/min/vs'),
++            to: path.resolve(__dirname, 'dist/vs'),
++            toType: 'dir',
++          },
+           {
+             from: path.resolve(__dirname, 'src/wasm/openscad.js'),
+             to: path.resolve(__dirname, 'dist'),
