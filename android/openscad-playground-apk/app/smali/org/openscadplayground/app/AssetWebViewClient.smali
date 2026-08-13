@@ -188,7 +188,7 @@
 
 # virtual methods
 .method public shouldInterceptRequest(Landroid/webkit/WebView;Landroid/webkit/WebResourceRequest;)Landroid/webkit/WebResourceResponse;
-    .locals 6
+    .locals 10
     .param p1, "view"    # Landroid/webkit/WebView;
     .param p2, "request"    # Landroid/webkit/WebResourceRequest;
 
@@ -224,6 +224,32 @@
     :try_start_0
     invoke-virtual {v2, v1}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
     move-result-object v3
+
+    const-string v4, "www/index.html"
+    invoke-virtual {v4, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result v4
+    if-eqz v4, :not_index
+
+    invoke-static {v3}, Lorg/openscadplayground/app/AssetWebViewClient;->readAllBytes(Ljava/io/InputStream;)[B
+    move-result-object v5
+
+    new-instance v6, Ljava/lang/String;
+    invoke-direct {v6, v5}, Ljava/lang/String;-><init>([B)V
+
+    const-string v7, "</head>"
+
+    const-string v9, "<script>(function(){var oc=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){try{if(this.hasAttribute(\'download\')&&this.href&&this.href.indexOf(\'blob:\')===0&&window.AndroidFileBridge){var fn=this.getAttribute(\'download\')||\'download\';var href=this.href;fetch(href).then(function(r){return r.blob();}).then(function(blob){var rd=new FileReader();rd.onloadend=function(){var du=rd.result;var i=du.indexOf(\',\');var b64=du.substring(i+1);var mt=blob.type||\'application/octet-stream\';window.AndroidFileBridge.saveFile(b64,fn,mt);};rd.readAsDataURL(blob);}).catch(function(e){console.error(\'save failed\',e);});return;}}catch(e){console.error(\'intercept error\',e);}return oc.apply(this,arguments);};document.addEventListener(\'click\',function(ev){var a=ev.target&&ev.target.closest?ev.target.closest(\'a[download]\'):null;if(a&&a.href&&a.href.indexOf(\'blob:\')===0&&window.AndroidFileBridge){ev.preventDefault();a.click();}},true);})();</script></head>"
+
+    invoke-virtual {v6, v7, v9}, Ljava/lang/String;->replace(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Ljava/lang/String;
+    move-result-object v6
+
+    invoke-virtual {v6}, Ljava/lang/String;->getBytes()[B
+    move-result-object v5
+
+    new-instance v3, Ljava/io/ByteArrayInputStream;
+    invoke-direct {v3, v5}, Ljava/io/ByteArrayInputStream;-><init>([B)V
+
+    :not_index
     :try_end_0
     .catch Ljava/io/IOException; {:try_start_0 .. :try_end_0} :catch_0
 
@@ -240,4 +266,31 @@
     move-exception v0
     const/4 v0, 0x0
     return-object v0
+.end method
+
+.method private static readAllBytes(Ljava/io/InputStream;)[B
+    .locals 5
+    .param p0, "is"    # Ljava/io/InputStream;
+
+    new-instance v0, Ljava/io/ByteArrayOutputStream;
+    invoke-direct {v0}, Ljava/io/ByteArrayOutputStream;-><init>()V
+
+    const/16 v1, 0x1000
+    new-array v2, v1, [B
+
+    :loop_start
+    invoke-virtual {p0, v2}, Ljava/io/InputStream;->read([B)I
+    move-result v3
+
+    const/4 v4, -0x1
+    if-eq v3, v4, :loop_end
+
+    const/4 v4, 0x0
+    invoke-virtual {v0, v2, v4, v3}, Ljava/io/ByteArrayOutputStream;->write([BII)V
+    goto :loop_start
+
+    :loop_end
+    invoke-virtual {v0}, Ljava/io/ByteArrayOutputStream;->toByteArray()[B
+    move-result-object v3
+    return-object v3
 .end method
