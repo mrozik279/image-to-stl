@@ -61,9 +61,9 @@
 
     invoke-virtual {v0, v2}, Landroid/webkit/WebView;->setHorizontalScrollBarEnabled(Z)V
 
-    new-instance v3, Landroid/webkit/WebViewClient;
+    new-instance v3, Lorg/openscadplayground/app/AssetWebViewClient;
 
-    invoke-direct {v3}, Landroid/webkit/WebViewClient;-><init>()V
+    invoke-direct {v3, p0}, Lorg/openscadplayground/app/AssetWebViewClient;-><init>(Landroid/content/Context;)V
 
     invoke-virtual {v0, v3}, Landroid/webkit/WebView;->setWebViewClient(Landroid/webkit/WebViewClient;)V
 
@@ -73,7 +73,7 @@
 
     invoke-virtual {v0, v3}, Landroid/webkit/WebView;->setWebChromeClient(Landroid/webkit/WebChromeClient;)V
 
-    const-string v3, "file:///android_asset/www/index.html"
+    const-string v3, "https://appassets.androidplatform.net/www/index.html"
 
     invoke-virtual {v0, v3}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V
 
