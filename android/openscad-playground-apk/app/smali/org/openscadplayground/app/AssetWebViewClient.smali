@@ -252,7 +252,7 @@
 
     const-string v7, "</head>"
 
-    const-string v9, "<script>(function(){if(\'serviceWorker\' in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});}if(\'caches\' in window){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}var oc=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){try{if(this.hasAttribute(\'download\')&&this.href&&this.href.indexOf(\'blob:\')===0&&window.AndroidFileBridge){var fn=this.getAttribute(\'download\')||\'download\';var href=this.href;fetch(href).then(function(r){return r.blob();}).then(function(blob){var rd=new FileReader();rd.onloadend=function(){var du=rd.result;var i=du.indexOf(\',\');var b64=du.substring(i+1);var mt=blob.type||\'application/octet-stream\';window.AndroidFileBridge.saveFile(b64,fn,mt);};rd.readAsDataURL(blob);}).catch(function(e){console.error(\'save failed\',e);});return;}}catch(e){console.error(\'intercept error\',e);}return oc.apply(this,arguments);};document.addEventListener(\'click\',function(ev){var a=ev.target&&ev.target.closest?ev.target.closest(\'a[download]\'):null;if(a&&a.href&&a.href.indexOf(\'blob:\')===0&&window.AndroidFileBridge){ev.preventDefault();a.click();}},true);})();</script></head>"
+    const-string v9, "<script>(function(){if(\'serviceWorker\' in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});}if(\'caches\' in window){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}var oc=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){try{if(this.hasAttribute(\'download\')&&this.href&&this.href.indexOf(\'blob:\')===0&&window.AndroidFileBridge){var fn=this.getAttribute(\'download\')||\'download\';var href=this.href;fetch(href).then(function(r){return r.blob();}).then(function(blob){var rd=new FileReader();rd.onloadend=function(){var du=rd.result;var i=du.indexOf(\',\');var b64=du.substring(i+1);var mt=blob.type||\'application/octet-stream\';window.AndroidFileBridge.saveFile(b64,fn,mt);};rd.readAsDataURL(blob);}).catch(function(e){console.error(\'save failed\',e);});return;}}catch(e){console.error(\'intercept error\',e);}return oc.apply(this,arguments);};document.addEventListener(\'click\',function(ev){var a=ev.target&&ev.target.closest?ev.target.closest(\'a[download]\'):null;if(a&&a.href&&a.href.indexOf(\'blob:\')===0&&window.AndroidFileBridge){ev.preventDefault();a.click();}},true);window.__openScadNativeOpenFile=function(b64,filename){try{var bin=atob(b64);var bytes=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++){bytes[i]=bin.charCodeAt(i);}var content=new TextDecoder(\'utf-8\').decode(bytes);var path=\'/\'+filename;var m=window.__openScadModel;if(!m){console.error(\'AndroidFileBridge: model not ready\');return;}m.fs.writeFileSync(path,content);m.openFile(path);}catch(e){console.error(\'open file failed\',e);}};})();</script></head>"
 
     invoke-virtual {v6, v7, v9}, Ljava/lang/String;->replace(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Ljava/lang/String;
     move-result-object v6
@@ -282,7 +282,7 @@
     return-object v0
 .end method
 
-.method private static readAllBytes(Ljava/io/InputStream;)[B
+.method public static readAllBytes(Ljava/io/InputStream;)[B
     .locals 5
     .param p0, "is"    # Ljava/io/InputStream;
 

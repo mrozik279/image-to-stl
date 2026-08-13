@@ -1,7 +1,15 @@
 diff --git a/src/components/EditorPanel.tsx b/src/components/EditorPanel.tsx
-index 61cfd8e..94bc4ea 100644
+index 61cfd8e..c51e8f3 100644
 --- a/src/components/EditorPanel.tsx
 +++ b/src/components/EditorPanel.tsx
+@@ -1,6 +1,6 @@
+ // Portions of this file are Copyright 2021 Google LLC, and licensed under GPL2+. See COPYING.
+ 
+-import React, { CSSProperties, useContext, useRef, useState } from 'react';
++import React, { CSSProperties, useContext, useEffect, useRef, useState } from 'react';
+ import Editor, { loader, Monaco } from '@monaco-editor/react';
+ import openscadEditorOptions from '../language/openscad-editor-options.ts';
+ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 @@ -21,6 +21,12 @@ const isMonacoSupported = (() => {
    return !(iosWk || android);
  })();
@@ -15,15 +23,41 @@ index 61cfd8e..94bc4ea 100644
  let monacoInstance: Monaco | null = null;
  if (isMonacoSupported) {
    loader.init().then(mi => monacoInstance = mi);
-@@ -32,6 +38,7 @@ export default function EditorPanel({className, style}: {className?: string, sty
+@@ -32,6 +38,14 @@ export default function EditorPanel({className, style}: {className?: string, sty
    if (!model) throw new Error('No model');
  
    const menu = useRef<Menu>(null);
 +  const textareaRef = useRef<HTMLTextAreaElement>(null);
++
++  // Expose the current model so the Android app's native AndroidFileBridge
++  // (see AssetWebViewClient's injected script) can load an uploaded file's
++  // content into the virtual filesystem via window.__openScadModel.
++  useEffect(() => {
++    (window as any).__openScadModel = model;
++  }, [model]);
  
    const state = model.state;
  
-@@ -133,7 +140,16 @@ export default function EditorPanel({className, style}: {className?: string, sty
+@@ -117,7 +131,17 @@ export default function EditorPanel({className, style}: {className?: string, sty
+           {
+             label: "Upload file(s)",
+             icon: 'pi pi-upload',
+-            disabled: true,
++            // Enabled only inside the Android app, where AssetWebViewClient
++            // exposes a native document-picker bridge (there's no browser
++            // File System Access API / <input type=file> wiring for this
++            // upstream, on any platform).
++            disabled: !(window as any).AndroidFileBridge,
++            command: () => {
++              const bridge = (window as any).AndroidFileBridge;
++              if (bridge && bridge.openFile) {
++                bridge.openFile();
++              }
++            },
+           },
+           {
+             label: 'Download sources',
+@@ -133,7 +157,16 @@ export default function EditorPanel({className, style}: {className?: string, sty
            {
              label: 'Select All',
              icon: 'pi pi-info-circle',
@@ -41,7 +75,7 @@ index 61cfd8e..94bc4ea 100644
            },
            {
              separator: true
-@@ -180,10 +196,11 @@ export default function EditorPanel({className, style}: {className?: string, sty
+@@ -180,10 +213,11 @@ export default function EditorPanel({className, style}: {className?: string, sty
            />
          )}
          {!isMonacoSupported && (
