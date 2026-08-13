@@ -39,7 +39,9 @@ aapt package -f \
   -F "$BUILD_DIR/app-unsigned.apk"
 
 echo "== 4/6: Adding classes.dex to the apk =="
-( cd "$BUILD_DIR" && zip -q -X app-unsigned.apk classes.dex )
+# Use aapt's own zip writer (not the system `zip` tool) to append classes.dex,
+# so the whole archive is written by a single, self-consistent implementation.
+( cd "$BUILD_DIR" && aapt add app-unsigned.apk classes.dex )
 
 echo "== 5/6: zipalign =="
 zipalign -f -p 4 "$BUILD_DIR/app-unsigned.apk" "$BUILD_DIR/app-aligned.apk"
@@ -55,6 +57,7 @@ if [ ! -f "$KEYSTORE" ]; then
 fi
 
 apksigner sign --ks "$KEYSTORE" --ks-pass pass:openscad123 --key-pass pass:openscad123 \
+  --min-sdk-version 23 \
   --out "$OUT_APK" "$BUILD_DIR/app-aligned.apk"
 
 echo
