@@ -1,5 +1,5 @@
 diff --git a/src/components/EditorPanel.tsx b/src/components/EditorPanel.tsx
-index 61cfd8e..2709e8a 100644
+index 61cfd8e..94bc4ea 100644
 --- a/src/components/EditorPanel.tsx
 +++ b/src/components/EditorPanel.tsx
 @@ -21,6 +21,12 @@ const isMonacoSupported = (() => {
@@ -15,6 +15,46 @@ index 61cfd8e..2709e8a 100644
  let monacoInstance: Monaco | null = null;
  if (isMonacoSupported) {
    loader.init().then(mi => monacoInstance = mi);
+@@ -32,6 +38,7 @@ export default function EditorPanel({className, style}: {className?: string, sty
+   if (!model) throw new Error('No model');
+ 
+   const menu = useRef<Menu>(null);
++  const textareaRef = useRef<HTMLTextAreaElement>(null);
+ 
+   const state = model.state;
+ 
+@@ -133,7 +140,16 @@ export default function EditorPanel({className, style}: {className?: string, sty
+           {
+             label: 'Select All',
+             icon: 'pi pi-info-circle',
+-            command: () => editor?.trigger(state.params.activePath, 'editor.action.selectAll', null),
++            command: () => {
++              if (editor) {
++                editor.trigger(state.params.activePath, 'editor.action.selectAll', null);
++              } else if (textareaRef.current) {
++                // Monaco isn't mounted on this platform (see isMonacoSupported)
++                // and we're using the plain <textarea> fallback instead.
++                textareaRef.current.focus();
++                textareaRef.current.select();
++              }
++            },
+           },
+           {
+             separator: true
+@@ -180,10 +196,11 @@ export default function EditorPanel({className, style}: {className?: string, sty
+           />
+         )}
+         {!isMonacoSupported && (
+-          <InputTextarea 
++          <InputTextarea
++            ref={textareaRef}
+             className="openscad-editor absolute-fill"
+             value={model.source}
+-            onChange={s => model.source = s.target.value ?? ''}  
++            onChange={s => model.source = s.target.value ?? ''}
+           />
+         )}
+       </div>
 diff --git a/webpack.config.js b/webpack.config.js
 index 5d68f2d..18041f8 100644
 --- a/webpack.config.js

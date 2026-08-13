@@ -217,6 +217,20 @@
     invoke-virtual {v1, v2, v3}, Ljava/lang/String;->substring(II)Ljava/lang/String;
     move-result-object v1
 
+    # Never serve the app's own service worker: it precaches/replays
+    # requests (StaleWhileRevalidate for everything) in a way that would
+    # keep serving a stale, pre-injection copy of index.html across APK
+    # updates, since Service Worker storage isn't tied to the APK and
+    # survives reinstalling a new one. We don't need offline caching here
+    # (everything is already local via this class), so just 404 it.
+    const-string v2, "www/sw.js"
+    invoke-virtual {v2, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result v2
+    if-eqz v2, :not_sw
+    const/4 v0, 0x0
+    return-object v0
+
+    :not_sw
     iget-object v2, p0, Lorg/openscadplayground/app/AssetWebViewClient;->context:Landroid/content/Context;
     invoke-virtual {v2}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
     move-result-object v2
@@ -238,7 +252,7 @@
 
     const-string v7, "</head>"
 
-    const-string v9, "<script>(function(){var oc=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){try{if(this.hasAttribute(\'download\')&&this.href&&this.href.indexOf(\'blob:\')===0&&window.AndroidFileBridge){var fn=this.getAttribute(\'download\')||\'download\';var href=this.href;fetch(href).then(function(r){return r.blob();}).then(function(blob){var rd=new FileReader();rd.onloadend=function(){var du=rd.result;var i=du.indexOf(\',\');var b64=du.substring(i+1);var mt=blob.type||\'application/octet-stream\';window.AndroidFileBridge.saveFile(b64,fn,mt);};rd.readAsDataURL(blob);}).catch(function(e){console.error(\'save failed\',e);});return;}}catch(e){console.error(\'intercept error\',e);}return oc.apply(this,arguments);};document.addEventListener(\'click\',function(ev){var a=ev.target&&ev.target.closest?ev.target.closest(\'a[download]\'):null;if(a&&a.href&&a.href.indexOf(\'blob:\')===0&&window.AndroidFileBridge){ev.preventDefault();a.click();}},true);})();</script></head>"
+    const-string v9, "<script>(function(){if(\'serviceWorker\' in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});}if(\'caches\' in window){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}var oc=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){try{if(this.hasAttribute(\'download\')&&this.href&&this.href.indexOf(\'blob:\')===0&&window.AndroidFileBridge){var fn=this.getAttribute(\'download\')||\'download\';var href=this.href;fetch(href).then(function(r){return r.blob();}).then(function(blob){var rd=new FileReader();rd.onloadend=function(){var du=rd.result;var i=du.indexOf(\',\');var b64=du.substring(i+1);var mt=blob.type||\'application/octet-stream\';window.AndroidFileBridge.saveFile(b64,fn,mt);};rd.readAsDataURL(blob);}).catch(function(e){console.error(\'save failed\',e);});return;}}catch(e){console.error(\'intercept error\',e);}return oc.apply(this,arguments);};document.addEventListener(\'click\',function(ev){var a=ev.target&&ev.target.closest?ev.target.closest(\'a[download]\'):null;if(a&&a.href&&a.href.indexOf(\'blob:\')===0&&window.AndroidFileBridge){ev.preventDefault();a.click();}},true);})();</script></head>"
 
     invoke-virtual {v6, v7, v9}, Ljava/lang/String;->replace(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Ljava/lang/String;
     move-result-object v6
