@@ -106,6 +106,7 @@ Desktop.ini
 !examples/sample_outputs/*.scad
 !examples/sample_outputs/*.stl
 !tests/fixtures/**/*.scad
+!openscad/*.scad
 
 # Model cache (large files)
 *.bin
