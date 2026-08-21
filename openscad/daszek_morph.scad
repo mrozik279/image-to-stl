@@ -1,14 +1,15 @@
 // ============================================================================
-// Daszek "Morph" - trojkatny, pusty w srodku, z nacieciami na kalenicy
+// Daszek "Morph" - dwa pochyle daszki (profil "Lambda"), puste pod spodem,
+//   zamkniete na koncach trojkatnymi sciankami czolowymi z nacieciem na szczycie.
 // ----------------------------------------------------------------------------
-// Co to jest: dlugi profil w ksztalcie daszka (trojkat rownoramienny),
-//   pusty w srodku (kanal otwarty na obu koncach), z dwoma pochylymi
-//   sciankami ("skrzydlami") i polokraglym nacieciem na szczycie (kalenicy)
-//   przy kazdym koncu. Odtworzone ze zdjec z Dysku Google (folder Morph).
+// Konstrukcja (wg zdjec z Dysku Google, folder Morph):
+//   - dwa panele dachu (lewy + prawy) o grubosci "grubosc_scianki", spotykaja
+//     sie na kalenicy; POD SPODEM PUSTE (bez dna, bez podstawy),
+//   - na obu koncach pelna trojkatna ScIANKA CZOLOWA (szczyt) zamykajaca profil,
+//   - w szczycie kazdego czola polokragle NACIECIE (jak na zdjeciu konca czesci).
 // Material: PETG, druk FDM. Jednostki: milimetry.
-// Orientacja druku: tak jak model stoi - podstawa na stole, kalenica do gory
-//   (druk bez podpor - kazda warstwa wezsza od poprzedniej).
-// Wersja jednoplikowa (biblioteka wklejona na dole) - dziala tez na telefonie.
+// Orientacja druku: podstawa na stole, kalenica do gory - bez podpor.
+// Wersja jednoplikowa (biblioteka na dole) - dziala tez w OpenSCAD Playground.
 // Data: 2026-08-21
 // ============================================================================
 
@@ -18,142 +19,138 @@ czesc = "wszystko"; // [wszystko, daszek, plyta_druku]
 /* [Wymiary glowne] */
 // dlugosc calego daszka (wzdluz osi) [mm]
 dlugosc = 164;              // [40:1:400]
-// szerokosc u podstawy trojkata (rozstaw dolnych narozy) [mm]
+// rozstaw dolnych krawedzi (szerokosc u podstawy) [mm]
 szerokosc_podstawy = 24;    // [10:0.5:80]
-// dlugosc pochylej scianki - "skrzydla" / spadku daszka [mm]
+// dlugosc pochylej scianki - jednego daszka / spadku [mm]
 skrzydlo = 20;              // [8:0.5:60]
-// grubosc scianek trojkata (dwa spadki + dno) [mm]
+// grubosc paneli dachu [mm]
 grubosc_scianki = 2.0;      // [1.2:0.1:5]
 
-/* [Stopki podstawy] */
-// szerokosc plaskiej stopki wystajacej na boki u podstawy (0 = brak) [mm]
-kolnierz_podstawy = 3;      // [0:0.5:20]
+/* [Scianki czolowe (szczyty)] */
+// czy zamykac konce trojkatna scianka czolowa
+czolo_wl = true;            // [true, false]
+// scianki na obu koncach? (false = tylko poczatek)
+czolo_oba = true;           // [true, false]
+// grubosc scianki czolowej [mm]
+grubosc_czola = 2.0;        // [1.2:0.1:6]
 
-/* [Naciecia na kalenicy] */
-// czy wycinac naciecia na szczycie
-naciecie_wl = true;         // [true, false]
+/* [Naciecie na szczycie czola] */
 // szerokosc naciecia (srednica polokragla) [mm]
-naciecie_szerokosc = 6;     // [2:0.5:30]
+naciecie_szerokosc = 5;     // [2:0.5:30]
 // glebokosc naciecia liczona od szczytu w dol [mm]
-naciecie_glebokosc = 5;     // [1:0.5:30]
-// odsuniecie srodka naciecia od konca daszka [mm]
-naciecie_odsuniecie = 12;   // [0:1:100]
-
-/* [Wykonczenie] */
-// fazka na dolnej krawedzi (przeciw "sloniowej stopie" - elephant foot) [mm]
-faza_dol = 0.6;             // [0:0.1:2]
+naciecie_glebokosc = 4;     // [1:0.5:30]
+// jak gleboko naciecie wchodzi w kalenice za czolem [mm]
+naciecie_zasieg = 3;        // [0:0.5:30]
 
 /* [Kalibracja drukarki] */
 // globalna korekta wymiaru (jesli czesci wychodza za male/za duze) [mm]
 KOREKTA = 0.0;              // [-0.3:0.05:0.3]
 
 /* [Jakosc] */
-// maksymalny blad cieciwy dla luków - mniej = gladziej, wolniej [mm]
+// maksymalny blad cieciwy dla lukow - mniej = gladziej, wolniej [mm]
 BLAD_CIECIWY = 0.05;        // [0.02:0.01:0.2]
 
 /* [Hidden] */
 EPS = 0.01;                 // maly zapas na operacje boolowskie
 
 // --- wartosci pochodne (obliczane) --------------------------------------
-b   = szerokosc_podstawy + KOREKTA;                 // podstawa
-sk  = skrzydlo;                                      // dlugosc spadku
-t   = grubosc_scianki;                               // grubosc scianki
-kol = kolnierz_podstawy;                             // stopka
-// wysokosc trojkata z twierdzenia Pitagorasa (spadek^2 = wysokosc^2 + (b/2)^2)
+b   = szerokosc_podstawy + KOREKTA;   // podstawa
+sk  = skrzydlo;                       // dlugosc spadku
+t   = grubosc_scianki;                // grubosc panelu
+gc  = grubosc_czola;                  // grubosc czola
+// wysokosc trojkata (spadek^2 = wysokosc^2 + (b/2)^2)
 wys = sqrt(max(0.01, sk*sk - (b/2)*(b/2)));
-// promien okregu wpisanego - decyduje czy wnetrze w ogole sie miesci
-r_in = b * wys / (b + 2 * sk);
+// jednostkowy wektor "do wnetrza" dla prawego panelu (prostopadly do spadku)
+nx = -wys / sk;
+ny = -(b/2) / sk;
 
 echo(str("Daszek: dlugosc=", dlugosc, " podstawa=", b,
-         " skrzydlo=", sk, " wysokosc=", wys, " scianka=", t));
+         " skrzydlo=", sk, " wysokosc=", wys, " panel=", t, " czolo=", gc));
 
 // ============================================================================
 // MODULY
 // ============================================================================
 
-// Przekroj pelny (2D): X = szerokosc, Y = wysokosc; podstawa na Y=0
-module profil_pelny() {
-    union() {
-        polygon([[-b/2, 0], [b/2, 0], [0, wys]]);
-        if (kol > 0) {
-            // stopki zachodza na scianke o "t" (zgrzew, nie styk punktowy)
-            translate([ b/2 - t, 0]) square([kol + t, t]);       // stopka prawa
-            translate([-b/2 - kol, 0]) square([kol + t, t]);     // stopka lewa
+// Prawy panel dachu (2D): pas o grubosci t wzdluz prawego spadku
+module bar_prawy() {
+    polygon([
+        [b/2,            0],              // dolny naroznik zewnetrzny
+        [0,              wys],            // kalenica (zewnatrz)
+        [t*nx,           wys + t*ny],     // kalenica (wewnatrz)
+        [b/2 + t*nx,     t*ny]            // dolny naroznik wewnetrzny
+    ]);
+}
+
+// Profil dachu (2D): lewy + prawy panel, przyciete plasko u dolu (y>=0)
+module profil_daszek() {
+    intersection() {
+        union() {
+            bar_prawy();
+            mirror([1, 0, 0]) bar_prawy();
         }
+        translate([-1000, 0]) square([2000, 1000]);   // odetnij ponizej podstawy
     }
 }
 
-// Przekroj wnetrza (2D): trojkat wciety o grubosc scianki -> zostaja sciany t.
-// Liczony wprost (bez offset() - lzej i zgodnie z aplikacjami mobilnymi).
-// Wewnetrzny trojkat = zewnetrzny przeskalowany wzgledem srodka okregu wpisanego.
-module profil_wnetrze() {
-    skala = (r_in - t) / r_in;             // skala wnetrza
-    // wierzcholki zewnetrzne
-    Ax = -b/2; Bx = b/2; Cy = wys;
-    // wierzcholki wewnetrzne (srodek wpisanego lezy na [0, r_in])
-    ax = skala * Ax;   ay = t;             // lewy dolny
-    bx = skala * Bx;   by = t;             // prawy dolny
-    cx = 0;            cy = r_in + skala * (Cy - r_in);   // szczyt
-    polygon([[ax, ay], [bx, by], [cx, cy]]);
+// Pelny trojkat (2D) - ksztalt scianki czolowej
+module trojkat_pelny() {
+    polygon([[-b/2, 0], [b/2, 0], [0, wys]]);
 }
 
-// Bryla pelna: przekroj wyciagniety na dlugosc, ustawiony kalenica do gory,
-// dlugosc wzdluz osi Y (0..dlugosc)
-module korpus_pelny() {
+// Dach na calej dlugosci, kalenica do gory, dlugosc wzdluz Y (0..dlugosc)
+module korpus_daszek() {
     translate([0, dlugosc, 0])
         rotate([90, 0, 0])
             linear_extrude(height = dlugosc)
-                profil_pelny();
+                profil_daszek();
 }
 
-// Pusty kanal - wyciagniety odrobine dluzej, zeby konce byly otwarte
-module korpus_wnetrze() {
+// Scianka czolowa przy poczatku (y: 0..gc)
+module czolo_y0() {
+    translate([0, gc, 0])
+        rotate([90, 0, 0])
+            linear_extrude(height = gc)
+                trojkat_pelny();
+}
+
+// Scianka czolowa przy koncu (y: dlugosc-gc..dlugosc)
+module czolo_y1() {
     translate([0, dlugosc, 0])
         rotate([90, 0, 0])
-            translate([0, 0, -EPS])
-                linear_extrude(height = dlugosc + 2 * EPS)
-                    profil_wnetrze();
+            linear_extrude(height = gc)
+                trojkat_pelny();
 }
 
-// Jedno naciecie: polokragly rowek wciety w kalenice z gory, w poprzek szerokosci
-module jedno_naciecie() {
-    rr  = min(naciecie_szerokosc / 2, naciecie_glebokosc); // promien dna
-    z0  = wys - naciecie_glebokosc + rr;                   // srodek luku dna
-    hx  = b / 2 + kol + 2;                                 // zasieg w poprzek (X)
+// Naciecie w szczycie: polokragly rowek od gory, przez czolo i kawalek kalenicy.
+// y0 = poczatek wzdluz osi, dl = dlugosc rowka wzdluz osi
+module naciecie_szczyt(y0, dl) {
+    rr = min(naciecie_szerokosc / 2, naciecie_glebokosc);   // promien dna
+    z0 = wys - naciecie_glebokosc + rr;                     // srodek luku dna
     union() {
-        // zaokraglone dno rowka (walec lezacy wzdluz X)
-        translate([0, 0, z0])
-            rotate([0, 90, 0])
-                cylinder(h = 2 * hx, r = rr, center = true, $fn = fn_walec(rr));
+        // zaokraglone dno (walec lezacy wzdluz Y)
+        translate([0, y0, z0])
+            rotate([-90, 0, 0])
+                cylinder(h = dl, r = rr, $fn = fn_walec(rr));
         // proste scianki rowka az ponad kalenice
-        translate([-hx, -rr, z0])
-            cube([2 * hx, 2 * rr, (wys - z0) + 2]);
+        translate([-rr, y0, z0])
+            cube([2 * rr, dl, (wys - z0) + 2]);
     }
-}
-
-// Naciecia przy obu koncach kalenicy
-module naciecia() {
-    for (y = [naciecie_odsuniecie, dlugosc - naciecie_odsuniecie])
-        translate([0, y, 0]) jedno_naciecie();
-}
-
-// Fazka 45' na dolnych zewnetrznych krawedziach (relief pod pierwsza warstwe)
-module faza_dolna() {
-    oh = b / 2 + (kol > 0 ? kol : 0);   // zewnetrzna krawedz podstawy
-    s  = faza_dol * sqrt(2);
-    for (sx = [-1, 1])
-        translate([sx * oh, dlugosc / 2, 0])
-            rotate([0, 45, 0])
-                cube([s, dlugosc + 2, s], center = true);
 }
 
 // Gotowy daszek
 module daszek() {
+    dl0 = gc + naciecie_zasieg + EPS;      // dlugosc naciecia od konca
     difference() {
-        korpus_pelny();
-        if (r_in > t) korpus_wnetrze();   // draz tylko gdy sciany sie mieszcza
-        if (naciecie_wl) naciecia();
-        if (faza_dol > 0) faza_dolna();
+        union() {
+            korpus_daszek();
+            if (czolo_wl) czolo_y0();
+            if (czolo_wl && czolo_oba) czolo_y1();
+        }
+        if (czolo_wl) {
+            naciecie_szczyt(-EPS, dl0);                       // naciecie na poczatku
+            if (czolo_oba)
+                naciecie_szczyt(dlugosc - dl0 + EPS, dl0);    // naciecie na koncu
+        }
     }
 }
 
@@ -178,7 +175,3 @@ function fn_walec(r) =
     (r <= BLAD_CIECIWY)
         ? 24
         : max(24, ceil(180 / acos(1 - BLAD_CIECIWY / r)));
-
-// liczba segmentow kuli o promieniu r
-function fn_kula(r) =
-    max(32, fn_walec(r));
