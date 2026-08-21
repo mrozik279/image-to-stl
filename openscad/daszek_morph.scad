@@ -7,7 +7,8 @@
 //     lewy+prawy o grubosci "grubosc_scianki", spotykaja sie na kalenicy),
 //     POD SPODEM PUSTE - bez dna, bez podstawy,
 //   - na obu koncach pelna trojkatna ScIANKA CZOLOWA (szczyt) zamykajaca profil,
-//   - w szczycie kazdego czola OSTRE NACIECIE "V" (jak na zdjeciu konca czesci).
+//   - w kazdym czole TROJKATNE OKNO: waski wierzcholek 3 mm pod szczytem,
+//     rozszerzajace sie ku dolowi (wysoki trojkat o waskiej podstawie).
 // Zbudowane jako: bryla trojkatna  MINUS  wnetrze (otwarte u dolu)  MINUS naciecia.
 // Material: PETG, druk FDM. Jednostki: milimetry.
 // Orientacja druku: podstawa na stole, kalenica do gory - bez podpor.
@@ -36,13 +37,13 @@ czolo_oba = true;           // [true, false]
 // grubosc scianki czolowej [mm]
 grubosc_czola = 2.0;        // [1.2:0.1:6]
 
-/* [Naciecie na szczycie czola] */
-// szerokosc naciecia u gory (rozstaw ramion V) [mm]
-naciecie_szerokosc = 5;     // [2:0.5:30]
-// glebokosc naciecia liczona od szczytu w dol [mm]
-naciecie_glebokosc = 4;     // [1:0.5:30]
-// jak gleboko naciecie wchodzi w kalenice za czolem [mm]
-naciecie_zasieg = 3;        // [0:0.5:30]
+/* [Naciecie - trojkatne okno w czole] */
+// ile ponizej szczytu zaczyna sie okno (waski wierzcholek u gory) [mm]
+odsuniecie_gora = 3;        // [0:0.5:15]
+// szerokosc podstawy okna u dolu ("waska podstawa") [mm]
+podstawa_naciecia = 9;      // [2:0.5:30]
+// wysokosc dolnej krawedzi okna nad podstawa daszka [mm]
+dol_naciecia = 2;           // [0:0.5:15]
 
 /* [Kalibracja drukarki] */
 // globalna korekta wymiaru (jesli czesci wychodza za male/za duze) [mm]
@@ -103,17 +104,18 @@ module wydrazenie(y0, y1) {
                 profil_wnetrze();
 }
 
-// Naciecie w szczycie: OSTRE "V" od gory, przez czolo i kawalek kalenicy.
-// y0 = poczatek wzdluz osi, dl = dlugosc rowka wzdluz osi
-module naciecie_szczyt(y0, dl) {
-    w = naciecie_szerokosc;             // rozstaw ramion V u gory
-    translate([0, y0 + dl, 0])          // rowek zajmie y0..y0+dl
+// Trojkatne OKNO w czole: waski wierzcholek u gory (3 mm pod szczytem),
+// rozszerza sie ku dolowi. Wycinane na wylot przez scianke czolowa.
+// y0 = poczatek wzdluz osi, dl = dlugosc otworu wzdluz osi
+module naciecie_okno(y0, dl) {
+    pb = podstawa_naciecia;
+    translate([0, y0 + dl, 0])
         rotate([90, 0, 0])
             linear_extrude(height = dl)
                 polygon([
-                    [-w/2, wys + 2],                 // gora - lewe ramie
-                    [ w/2, wys + 2],                 // gora - prawe ramie
-                    [ 0,   wys - naciecie_glebokosc] // ostry wierzcholek V
+                    [ 0,     wys - odsuniecie_gora],  // waski wierzcholek u gory
+                    [-pb/2,  dol_naciecia],           // dol - lewy
+                    [ pb/2,  dol_naciecia]            // dol - prawy
                 ]);
 }
 
@@ -122,12 +124,12 @@ module daszek() {
     // gdzie zaczyna/konczy sie wnetrze (czola zostawiaja lita bryle na koncach)
     y0 = czolo_wl              ? gc            : -EPS;
     y1 = (czolo_wl && czolo_oba) ? dlugosc - gc : dlugosc + EPS;
-    dl0 = gc + naciecie_zasieg + EPS;   // dlugosc naciecia od konca
     difference() {
         bryla_pelna();
         wydrazenie(y0, y1);
-        if (czolo_wl)               naciecie_szczyt(-EPS, dl0);
-        if (czolo_wl && czolo_oba)  naciecie_szczyt(dlugosc - dl0 + EPS, dl0);
+        // trojkatne okno wycinane na wylot przez czolo
+        if (czolo_wl)               naciecie_okno(-EPS, gc + 2 * EPS);
+        if (czolo_wl && czolo_oba)  naciecie_okno(dlugosc - gc - EPS, gc + 2 * EPS);
     }
 }
 
