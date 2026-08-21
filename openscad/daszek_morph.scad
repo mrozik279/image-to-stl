@@ -61,6 +61,8 @@ t   = grubosc_scianki;                               // grubosc scianki
 kol = kolnierz_podstawy;                             // stopka
 // wysokosc trojkata z twierdzenia Pitagorasa (spadek^2 = wysokosc^2 + (b/2)^2)
 wys = sqrt(max(0.01, sk*sk - (b/2)*(b/2)));
+// promien okregu wpisanego - decyduje czy wnetrze w ogole sie miesci
+r_in = b * wys / (b + 2 * sk);
 
 echo(str("Daszek: dlugosc=", dlugosc, " podstawa=", b,
          " skrzydlo=", sk, " wysokosc=", wys, " scianka=", t));
@@ -81,9 +83,18 @@ module profil_pelny() {
     }
 }
 
-// Przekroj wnetrza (2D): trojkat wciety o grubosc scianki -> zostaja sciany t
+// Przekroj wnetrza (2D): trojkat wciety o grubosc scianki -> zostaja sciany t.
+// Liczony wprost (bez offset() - lzej i zgodnie z aplikacjami mobilnymi).
+// Wewnetrzny trojkat = zewnetrzny przeskalowany wzgledem srodka okregu wpisanego.
 module profil_wnetrze() {
-    offset(delta = -t) polygon([[-b/2, 0], [b/2, 0], [0, wys]]);
+    skala = (r_in - t) / r_in;             // skala wnetrza
+    // wierzcholki zewnetrzne
+    Ax = -b/2; Bx = b/2; Cy = wys;
+    // wierzcholki wewnetrzne (srodek wpisanego lezy na [0, r_in])
+    ax = skala * Ax;   ay = t;             // lewy dolny
+    bx = skala * Bx;   by = t;             // prawy dolny
+    cx = 0;            cy = r_in + skala * (Cy - r_in);   // szczyt
+    polygon([[ax, ay], [bx, by], [cx, cy]]);
 }
 
 // Bryla pelna: przekroj wyciagniety na dlugosc, ustawiony kalenica do gory,
@@ -140,7 +151,7 @@ module faza_dolna() {
 module daszek() {
     difference() {
         korpus_pelny();
-        korpus_wnetrze();
+        if (r_in > t) korpus_wnetrze();   // draz tylko gdy sciany sie mieszcza
         if (naciecie_wl) naciecia();
         if (faza_dol > 0) faza_dolna();
     }
