@@ -7,7 +7,7 @@
 //     lewy+prawy o grubosci "grubosc_scianki", spotykaja sie na kalenicy),
 //     POD SPODEM PUSTE - bez dna, bez podstawy,
 //   - na obu koncach pelna trojkatna ScIANKA CZOLOWA (szczyt) zamykajaca profil,
-//   - w szczycie kazdego czola polokragle NACIECIE (jak na zdjeciu konca czesci).
+//   - w szczycie kazdego czola OSTRE NACIECIE "V" (jak na zdjeciu konca czesci).
 // Zbudowane jako: bryla trojkatna  MINUS  wnetrze (otwarte u dolu)  MINUS naciecia.
 // Material: PETG, druk FDM. Jednostki: milimetry.
 // Orientacja druku: podstawa na stole, kalenica do gory - bez podpor.
@@ -103,20 +103,18 @@ module wydrazenie(y0, y1) {
                 profil_wnetrze();
 }
 
-// Naciecie w szczycie: polokragly rowek od gory, przez czolo i kawalek kalenicy.
+// Naciecie w szczycie: OSTRE "V" od gory, przez czolo i kawalek kalenicy.
 // y0 = poczatek wzdluz osi, dl = dlugosc rowka wzdluz osi
 module naciecie_szczyt(y0, dl) {
-    rr = min(naciecie_szerokosc / 2, naciecie_glebokosc);   // promien dna
-    z0 = wys - naciecie_glebokosc + rr;                     // srodek luku dna
-    union() {
-        // zaokraglone dno (walec lezacy wzdluz Y)
-        translate([0, y0, z0])
-            rotate([-90, 0, 0])
-                cylinder(h = dl, r = rr, $fn = fn_walec(rr));
-        // proste scianki rowka az ponad kalenice
-        translate([-rr, y0, z0])
-            cube([2 * rr, dl, (wys - z0) + 2]);
-    }
+    w = naciecie_szerokosc;             // rozstaw ramion V u gory
+    translate([0, y0 + dl, 0])          // rowek zajmie y0..y0+dl
+        rotate([90, 0, 0])
+            linear_extrude(height = dl)
+                polygon([
+                    [-w/2, wys + 2],                 // gora - lewe ramie
+                    [ w/2, wys + 2],                 // gora - prawe ramie
+                    [ 0,   wys - naciecie_glebokosc] // ostry wierzcholek V
+                ]);
 }
 
 // Gotowy daszek
