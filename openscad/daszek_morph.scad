@@ -124,12 +124,13 @@ module daszek() {
     // gdzie zaczyna/konczy sie wnetrze (czola zostawiaja lita bryle na koncach)
     y0 = czolo_wl              ? gc            : -EPS;
     y1 = (czolo_wl && czolo_oba) ? dlugosc - gc : dlugosc + EPS;
+    zag = 4;   // okno wchodzi 4 mm w pusty kanal - zdrowy zapas, bez cienkich sliverow
     difference() {
         bryla_pelna();
         wydrazenie(y0, y1);
-        // trojkatne okno wycinane na wylot przez czolo
-        if (czolo_wl)               naciecie_okno(-EPS, gc + 2 * EPS);
-        if (czolo_wl && czolo_oba)  naciecie_okno(dlugosc - gc - EPS, gc + 2 * EPS);
+        // trojkatne okno wycinane na wylot przez czolo (z zaglebieniem w kanal)
+        if (czolo_wl)               naciecie_okno(-EPS, gc + zag);
+        if (czolo_wl && czolo_oba)  naciecie_okno(dlugosc - gc - zag, gc + zag + EPS);
     }
 }
 
