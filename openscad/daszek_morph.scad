@@ -37,7 +37,7 @@ czolo_oba = true;           // [true, false]
 grubosc_czola = 2.0;        // [1.2:0.1:6]
 
 /* [Naciecie na szczycie czola] */
-// szerokosc naciecia (srednica polokragla) [mm]
+// szerokosc naciecia u gory (rozstaw ramion V) [mm]
 naciecie_szerokosc = 5;     // [2:0.5:30]
 // glebokosc naciecia liczona od szczytu w dol [mm]
 naciecie_glebokosc = 4;     // [1:0.5:30]
