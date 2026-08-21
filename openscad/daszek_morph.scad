@@ -70,6 +70,9 @@ szczyt_w = r_in + skala * (wys - r_in);          // wysokosc wierzcholka wnetrza
 // wnetrze siega ponizej podstawy (otwarte dno, bez plyty)
 dno_w   = -1;                                     // dno wnetrza 1 mm pod podstawa
 polowa_w = (szczyt_w - dno_w) * (b / 2) / wys;    // polowa szerokosci wnetrza u dolu
+// wierzcholek okna - nie wyzej niz wierzcholek wnetrza (okno lezy w obrysie
+// pustki -> czysty CSG, bez cienkich pasków litej kalenicy)
+okno_szczyt = min(wys - odsuniecie_gora, szczyt_w);
 
 echo(str("Daszek: dlugosc=", dlugosc, " podstawa=", b, " skrzydlo=", sk,
          " wysokosc=", wys, " panel=", t, " czolo=", gc));
@@ -113,9 +116,9 @@ module naciecie_okno(y0, dl) {
         rotate([90, 0, 0])
             linear_extrude(height = dl)
                 polygon([
-                    [ 0,     wys - odsuniecie_gora],  // waski wierzcholek u gory
-                    [-pb/2,  dol_naciecia],           // dol - lewy
-                    [ pb/2,  dol_naciecia]            // dol - prawy
+                    [ 0,     okno_szczyt],   // waski wierzcholek u gory (w obrysie pustki)
+                    [-pb/2,  dol_naciecia],  // dol - lewy
+                    [ pb/2,  dol_naciecia]   // dol - prawy
                 ]);
 }
 
