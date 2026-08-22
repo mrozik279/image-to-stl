@@ -78,9 +78,9 @@ napis = "morph";
 napis_wys = 12; // [3:0.5:20]
 // glebokosc grawerki [mm]
 napis_glebokosc = 1.0; // [0.2:0.1:3]
-// czcionka (OpenSCAD desktop: "Liberation Sans:style=Bold"
-//           OpenSCAD telefon/Playground: zostaw puste "")
-napis_font = "Liberation Sans:style=Bold";
+// czcionka: "" = domyslna (dziala wszedzie, w tym telefon/Playground)
+//           "Liberation Sans:style=Bold" = desktop OpenSCAD (nie wpisuj na Playground!)
+napis_font = "";
 
 /* [Gniazdo kulkowe od spodu (mostek w srodku dlugosci, montaz na dragu)] */
 gniazdo_wl = true; // [true, false]
@@ -255,18 +255,20 @@ module plaster_na_skrzydle(znak_bok) {
 }
 
 // napis wygrawerowany na powierzchni kalenicy (od gory - druk 3D pokazuje litery od gory)
-// UWAGA: na OpenSCAD telefon/Playground - ustaw napis_font = "" (pusty string)
+// napis_font = "" = font systemowy (bezpieczne na telefon/Playground)
+// napis_font = "Liberation Sans:style=Bold" = desktop (nie uzywaj na Playground)
 module napis_na_kalenicy() {
     if (napis_wl && napis != "") {
-        translate([0, dlugosc/2, wys - napis_glebokosc + EPS])
-            linear_extrude(height = napis_glebokosc + 0.3)
-                if (napis_font != "")
-                    text(napis, size = napis_wys,
-                         font = napis_font,
+        translate([0, dlugosc/2, wys - napis_glebokosc + EPS]) {
+            if (napis_font != "")
+                linear_extrude(height = napis_glebokosc + 0.3)
+                    text(napis, size = napis_wys, font = napis_font,
                          halign = "center", valign = "center");
-                else
+            else
+                linear_extrude(height = napis_glebokosc + 0.3)
                     text(napis, size = napis_wys,
                          halign = "center", valign = "center");
+        }
     }
 }
 
