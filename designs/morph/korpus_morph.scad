@@ -61,7 +61,8 @@ napis_glebokosc = 1.2; // [0.2:0.1:4]
 napis_font = "";
 
 /* [Gniazdo kulkowe od spodu] */
-gniazdo_wl = true; // [true, false]
+// UWAGA: sfera wiesza OpenCSG preview w Playground - wlacz tylko na desktopie/do druku
+gniazdo_wl = false; // [true, false]
 kula_srednica = 24; // [6:0.5:40]
 kula_luz = 0.4; // [0:0.05:1.5]
 wpust_srednica = 12; // [3:0.5:25]
