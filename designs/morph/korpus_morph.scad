@@ -51,7 +51,8 @@ plaster_glebokosc = 1.0; // [0.4:0.1:3]
 plaster_margines = 8; // [0:0.5:20]
 
 /* [Napis na czolowej sciance] */
-napis_wl = true; // [true, false]
+// UWAGA: text() wiesza OpenSCAD Playground - wlacz tylko na desktopie
+napis_wl = false; // [true, false]
 napis = "morph";
 napis_wys = 14; // [4:0.5:24]
 napis_glebokosc = 1.2; // [0.2:0.1:4]
