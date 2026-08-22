@@ -84,7 +84,7 @@ function fn_kula(r)  = max(32, ceil(360/(2*acos(1-min(0.99,BLAD_CIECIWY/max(0.1,
 // wartosci pochodne
 wys       = wys_glowna;
 b_polowa  = polowa_podstawy;
-polkat    = atan2(b_polowa, wys);          // kat od pionu do skrzydla
+polkat    = atan(b_polowa / max(0.001, wys)); // kat od pionu do skrzydla
 t         = grubosc_scianki;
 sk        = sqrt(wys*wys + b_polowa*b_polowa); // dlugosc skrzydla wzdluz powierzchni
 h_in      = max(0.5, wys - t / sin(polkat));
