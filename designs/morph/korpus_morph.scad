@@ -1,12 +1,14 @@
 // ============================================================================
-// KORPUS "MORPH" v7 - glowica SZLIFIERKI NAROZNEJ (corner sander)
+// KORPUS "MORPH" v8 - glowica SZLIFIERKI NAROZNEJ (corner sander)
 // do plyt gipsowo-kartonowych, montowana na dragu teleskopowym.
 // ----------------------------------------------------------------------------
 // Geometria: klin Λ o profilu trojkatnym.
-//   - przednia scianka ZAMKNIETA (trojkatna plansza z napisem "morph" wypuklym)
+//   - przednia scianka ZAMKNIETA (trojkatna plansza zamknieta)
 //   - tylny koniec OTWARTY (zaokraglone konce skrzydel - opcjonalne)
 //   - wnetrze PUSTE ("BE HOLLOW INSIDE")
 //   - mostek lity w srodku dlugosci z gniazdem kulkowym OD DOLU
+//   - napis "morph" DEBOSSED (wyciety) na powierzchni prawego skrzydla
+//   - rowki przelotowe przez grubosc scianki
 // Wymiary: Jacek podal dlugosc=160, wys=100, pol-podstawy=80, kula=24 mm
 // Material: PETG. Druk: kalenica u gory, spod na stole - bez podpor.
 // Wersja jednoplikowa (telefon / OpenSCAD Playground / desktop).
@@ -33,11 +35,10 @@ grubosc_czola = 3.0; // [1.6:0.1:8]
 zaokraglenie_koncow_wl = false; // [true, false]
 zaokr_promien = 12; // [0:0.5:30]
 
-/* [Rowki wzdluzne (usztywnienia)] */
+/* [Rowki przelotowe przy kalenicy] */
 rowki_wl = true; // [true, false]
 rowki_liczba = 2; // [0:1:6]
-rowek_szer = 3.0; // [1:0.1:6]
-rowek_glebokosc = 1.5; // [0.4:0.1:3]
+rowek_szer = 3.0; // [1:0.1:6] - szerokosc otworu wzdluz skrzydla
 rowek_od_kalenicy = 18; // [3:0.5:40]
 rowek_odstep = 20; // [4:0.5:40]
 rowek_margines = 15; // [0:1:40]
@@ -50,12 +51,16 @@ heks_scianka = 1.0; // [0.4:0.1:2]
 plaster_glebokosc = 1.0; // [0.4:0.1:3]
 plaster_margines = 8; // [0:0.5:20]
 
-/* [Napis na czolowej sciance] */
+/* [Napis na skrzydle (debossed)] */
 // UWAGA: text() wiesza OpenSCAD Playground - wlacz tylko na desktopie
 napis_wl = false; // [true, false]
 napis = "morph";
 napis_wys = 14; // [4:0.5:24]
 napis_glebokosc = 1.2; // [0.2:0.1:4]
+// polozenie srodka napisu wzdluz zbocza (0=kalenica, 1=podstawa skrzydla)
+napis_polozenie = 0.45; // [0.1:0.05:0.9]
+// polozenie srodka napisu wzdluz dlugosci (0=czolo, 1=tyl)
+napis_pozycja_y = 0.55; // [0.1:0.05:0.9]
 // "" = font domyslny (dziala wszedzie, w tym telefon/Playground)
 // "Liberation Sans:style=Bold" = desktop OpenSCAD
 napis_font = "";
@@ -91,7 +96,7 @@ h_in      = max(0.5, wys - t / sin(polkat));
 dno_in    = -1;
 x_dol_in  = b_polowa * (h_in - dno_in) / wys;
 
-echo(str("Klin Morph v7: dl=",dlugosc,"  wys=",wys,"  pol_podst=",b_polowa,
+echo(str("Klin Morph v8: dl=",dlugosc,"  wys=",wys,"  pol_podst=",b_polowa,
          "  kat=",round(2*polkat*10)/10,"  sk=",round(sk*10)/10,"  t=",t));
 
 // ============================================================================
@@ -172,10 +177,10 @@ module rowek(znak_bok, r_od_kalenicy) {
     if (dl_rowka > 0) {
         px = znak_bok * r_od_kalenicy * sin(polkat);
         pz = wys - r_od_kalenicy * cos(polkat);
-        // rowek wzdluzny od sciany czolowej + margines do tylnego konca
+        // przelotowy przez calkowita grubosc skrzydla (t + 10mm margines po obu stronach)
         translate([px, grubosc_czola + rowek_margines + dl_rowka/2, pz])
             rotate([0, -znak_bok * polkat, 0])
-                cube([2*rowek_glebokosc + 2*EPS, dl_rowka, rowek_szer], center = true);
+                cube([2*(t + 5), dl_rowka, rowek_szer], center = true);
     }
 }
 
@@ -207,21 +212,30 @@ module plaster_na_skrzydle(znak_bok) {
     }
 }
 
-// Napis "morph" WYPUKLY na przedniej sciance czolowej
-// Litery wysuwaja sie w -Y (przed czolo modelu)
-module napis_na_czole() {
+// Napis "morph" DEBOSSED (wyciety) na powierzchni PRAWEGO skrzydla.
+// Uzywa rotacji [0, 90-polkat, 0] * [0, 0, 90] zeby:
+//   - litery czytac wzdluz dlugosci kadluba (os Y globalna)
+//   - wyciecie bieglo prostopadle do powierzchni skrzydla (wzdluz normalnej)
+module napis_na_skrzydle() {
     if (napis_wl && napis != "") {
-        // pozycja: srodek X, ~30% wysokosci od podstawy skrzydel
-        // zakres Y: od -(napis_glebokosc) do +1 (1mm wnika w czolo dla polaczenia)
-        translate([0, 1, wys * 0.30])
-            rotate([90, 0, 0])
-                linear_extrude(height = napis_glebokosc + 1)
-                    if (napis_font != "")
-                        text(napis, size = napis_wys, font = napis_font,
-                             halign = "center", valign = "center");
-                    else
-                        text(napis, size = napis_wys,
-                             halign = "center", valign = "center");
+        t_s = napis_polozenie;          // 0=kalenica, 1=podstawa
+        ox = b_polowa * t_s;            // X na zewn. pow. prawego skrzydla
+        oz = wys * (1 - t_s);          // Z na zewn. pow. prawego skrzydla
+        // przesuniecie do wewnatrz o napis_glebokosc wzdluz normalnej wewnetrznej
+        // normalna zewn. prawego skrzydla: (cos(polkat), 0, sin(polkat))
+        ix = ox - cos(polkat) * napis_glebokosc;
+        iz = oz - sin(polkat) * napis_glebokosc;
+        y_pos = dlugosc * napis_pozycja_y;
+        translate([ix, y_pos, iz])
+            rotate([0, 90 - polkat, 0])
+                rotate([0, 0, 90])
+                    linear_extrude(height = napis_glebokosc + EPS)
+                        if (napis_font != "")
+                            text(napis, size = napis_wys, font = napis_font,
+                                 halign = "center", valign = "center");
+                        else
+                            text(napis, size = napis_wys,
+                                 halign = "center", valign = "center");
     }
 }
 
@@ -258,24 +272,22 @@ module korpus() {
     y_c  = gniazdo_pozycja * dlugosc;
     y_m0 = y_c - mostek_szer/2;
     y_m1 = y_c + mostek_szer/2;
-    union() {
-        difference() {
-            bryla_zewn();
-            // wydrazenie zaczyna sie OD grubosc_czola, zeby sciana czolowa zostala lita
-            if (gniazdo_wl) {
-                wydrazenie(grubosc_czola, y_m0);
-                wydrazenie(y_m1, dlugosc + 2);
-            } else {
-                wydrazenie(grubosc_czola, dlugosc + 2);
-            }
-            zaokraglenie_koncow_neg();
-            rowki_wszystkie();
-            plaster_na_skrzydle(+1);
-            plaster_na_skrzydle(-1);
-            gniazdo_kulkowe_neg();
+    difference() {
+        bryla_zewn();
+        // wydrazenie zaczyna sie OD grubosc_czola, zeby sciana czolowa zostala lita
+        if (gniazdo_wl) {
+            wydrazenie(grubosc_czola, y_m0);
+            wydrazenie(y_m1, dlugosc + 2);
+        } else {
+            wydrazenie(grubosc_czola, dlugosc + 2);
         }
-        // napis wypukly doklejony do czola (na zewnatrz bryly)
-        napis_na_czole();
+        zaokraglenie_koncow_neg();
+        rowki_wszystkie();
+        plaster_na_skrzydle(+1);
+        plaster_na_skrzydle(-1);
+        gniazdo_kulkowe_neg();
+        // napis DEBOSSED wycieta z prawego skrzydla
+        napis_na_skrzydle();
     }
 }
 
@@ -310,10 +322,14 @@ else if (czesc == "podglad_gniazda") podglad_gniazda();
 // * grubosc_czola   - grubosc przedniej zamknietej scianki.
 // * rowki_liczba    - usztywnienia wzdluzne (2 = jak na zdjeciach).
 // * plaster_wl      - wzor plastra miodu na zewnatrz. WYLACZ na telefonie!
-// * napis_wyl       - napis "morph" na czole. Font domyslny = dziala wszedzie.
+// * napis_wl        - napis "morph" wycieta z prawego skrzydla (debossed).
+//                     Font domyslny = dziala wszedzie.
+// * napis_polozenie - 0.0=kalenica (gora), 1.0=podstawa skrzydla (dol).
+//                     0.45 = polowa-gorna czesc skrzydla.
+// * napis_pozycja_y - 0.0=czolo (przod), 1.0=tyl. 0.55 = srodek-tyl.
 //
 // ============================================================================
-// WYMIARY v7 (przy domyslnych parametrach)
+// WYMIARY v8 (przy domyslnych parametrach)
 // ============================================================================
 //   dlugosc              160 mm
 //   wys_glowna           100 mm  (Jacek)
@@ -344,11 +360,12 @@ else if (czesc == "podglad_gniazda") podglad_gniazda();
 // v5: klin 93° bez czol      -> BLAD: gniazdo w kalenicy zamiast od spodu
 // v6: gniazdo w mostku       -> BLAD: czolo otwarte, napis na kalenicy,
 //                               kat 93° niespojny z wymiarami Jacka
-// v7 (TA WERSJA):
-//   - czolo ZAMKNIETE (grubosc_czola mm lita sciana przy y=0)
-//   - napis "morph" WYPUKLY na czole (jak na zdjeciach z paczki)
-//   - kat wynikajacy z wys=100 + pol-pod=80: ~77° (nie 93°)
-//   - parametry glowne = wys_glowna + polowa_podstawy (latwiejsze do pomiaru)
-//   - plaster_wl=false domyslnie (telefon)
-//   - napis_font="" domyslnie (telefon/Playground)
+// v7: czolo ZAMKNIETE, napis wypukly na czole, kat z wymiarow Jacka ~77°
+//     -> BLAD: napis byl na czolowej sciance, nie na skrzydle; rowki plytkie
+// v8 (TA WERSJA):
+//   - napis "morph" DEBOSSED (wyciety) na powierzchni prawego SKRZYDLA
+//     (nie na czole - to bylo v7 blad)
+//   - rowki sa PRZELOTOWE przez calkowita grubosc skrzydla (otwory, nie rowki)
+//   - napis_polozenie: polozenie srodka napisu wzdluz zbocza (0=kalenica,1=dol)
+//   - napis_pozycja_y: polozenie wzdluz dlugosci kadluba (0=czolo, 1=tyl)
 // ============================================================================
